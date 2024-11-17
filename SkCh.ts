@@ -1,24 +1,36 @@
-type SkFn<B extends any[], I, O> = Function<
-    B,
-    Function<[I], O>
->;
-type SkBuilt<I, O> = <T extends I>(...args: [I]) => O;
+type SkBuilt<I = any, O = any> = (...args: [I]) => O;
 
 type Function<I extends any[], O> = (...args: I) => O;
 
-type SkApply<T, F extends SkBuilt<any, any>[]> = 
+// exceptions due to no filling in generics for generic functions
+// a.k.a no instantiation expressions
+// see issues: 
+//  * https://github.com/microsoft/TypeScript/issues/57102
+//  * https://github.com/microsoft/TypeScript/pull/47607
+type Flatten<T extends any[][]> = T[number];
+type SkApplySingle<BaseType, F extends SkBuilt> = 
+    F extends <T>(value: T) => T[]
+      ? BaseType[]
+    : F extends <T>(value: T[][]) => T[]
+      ? BaseType extends any[][] ? Flatten<BaseType> : never
+    : F extends <T>(value: T[]) => T
+      ? BaseType
+    : F extends (value: infer I) => infer O
+      ? BaseType extends I ? O : never
+    : never;
+type SkApply<BaseType, F extends SkBuilt[]> = 
     F extends [] 
-    ? T
-    : F extends [SkBuilt<infer I, infer O>] 
-      ? T extends I ? O
-      : never
-    : F extends [SkBuilt<infer I, infer O>, ...infer R extends SkBuilt<any, any>[]] 
-      ? T extends I 
-        ? SkApply<O, R>
+    ? BaseType
+    : F extends [(value: infer I) => any] 
+      ? BaseType extends I ? SkApplySingle<BaseType, F[0]> : never
+    : F extends [(value: infer I) => any, ...infer R extends SkBuilt[]] 
+      ? BaseType extends I 
+        ? SkApply<SkApplySingle<BaseType, F[0]>, R>
         : never
       : never;
 
-export function apply<T, F extends SkBuilt<any, any>[]>(
+
+export function apply<T, F extends SkBuilt[]>(
     value: T,
     ...functions: F
 ): SkApply<T, F> {
@@ -28,8 +40,8 @@ export function apply<T, F extends SkBuilt<any, any>[]>(
     }
     return v as SkApply<T, F>;
 }
-export const map = function <T extends any[], F extends SkBuilt<any, any>[]>(...fns: F)
- //: <T>(args: T[]) => SkApply<T, F>[] 
+export const map = function <T extends any[], F extends SkBuilt[]>(...fns: F)
+
 {
   return (args: T) => args.map(a => apply(a, ...fns));
 };
@@ -52,18 +64,26 @@ export const ch = {
     return o;
   },
   flatten: <T>(values: T[][]) => values.flat() as T[],
+
+  all: (predicate: (value: any) => boolean) => (values: any[]) => values.every(predicate),
+  any: (predicate: (value: any) => boolean) => (values: any[]) => values.some(predicate),
+  none: (predicate: (value: any) => boolean) => (values: any[]) => values.every(value => !predicate(value)),
+
+  sum: (values: number[]) => values.reduce((a, b) => a + b, 0),
+
 };
 
-const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-
-const transform = apply(
-  nums,
-  ch.repeat(2),
-)
-const transform2 = apply(
-  ch.flatten,
-  map(ch.add(5), ch.mul(2), ch.toString),
-  ch.rev,
-  ch.join(", ")
-)
-console.log(transform)
+// const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+// const test = ch.repeat(2);
+// const transform = apply(
+//   nums,
+//   ch.repeat(2),
+//   ch.flatten,
+// )
+// const transform2 = apply(
+//   transform,
+//   map(ch.add(5), ch.mul(2), ch.toString),
+//   ch.rev,
+//   ch.join(", ")
+// )
+// console.log(transform)
