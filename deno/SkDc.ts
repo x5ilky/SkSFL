@@ -1,6 +1,6 @@
 /**
- * Link: https://gist.github.com/x5ilky/9d27df4f2e9c8ebf3f797570340510e3
- * Version: 1.0.1
+ * Link: https://github.com/x5ilky/SkSFL
+ * Version: 1.0.1deno
  * Author: x5ilky (https://github.com/x5ilky)
  * 
  * Dependencies:
@@ -28,6 +28,7 @@ import {
   SlashCommandBuilder,
   SlashCommandSubcommandBuilder,
 } from 'npm:discord.js';
+
 import path from 'node:path';
 import proxy from 'npm:node-global-proxy';
 import { Dispatcher, ProxyAgent } from 'npm:undici';
