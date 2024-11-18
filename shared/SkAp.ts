@@ -2,7 +2,7 @@
 // (S)il(k) (A)rgument (P)arser
 
 // #begin_import
-import { Ansi } from "../shared/SkAn.ts";
+import { Ansi } from "./SkAn.ts";
 // #end_import
 
 // deno-lint-ignore no-namespace
@@ -279,23 +279,3 @@ export namespace skap {
         }
     }
 }
-
-// example api
-
-const command = skap.command({
-    output: skap.string("-d").optional(),
-    number: skap.number("-n").optional().description("test number output"),
-    subc: skap.subcommand({
-        build: skap.command({
-            file: skap.string("-f").required()
-        })
-    }).required(),
-});
-const result = command.parse(Deno.args, {
-    customError: (error) => {
-        console.error(error);
-        Deno.exit(1);
-    }
-});
-console.log(result);
-console.log(command.usage());
