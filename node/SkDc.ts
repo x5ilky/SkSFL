@@ -22,9 +22,9 @@ import {
   EmbedBuilder,
   Events,
   GuildTextBasedChannel,
-  Interaction,
   InteractionCollector,
   REST,
+  RESTPostAPIChatInputApplicationCommandsJSONBody,
   Routes,
   SlashCommandBuilder,
   SlashCommandSubcommandBuilder,
@@ -124,6 +124,7 @@ export class SilkDC<TCustomState> {
       });
       proxy.start();
       options.rest ||= {};
+      // @ts-ignore
       options.rest.agent = new ProxyAgent(pr);
     });
     this.client = new Client(options);
@@ -218,7 +219,7 @@ export class SilkDC<TCustomState> {
    *  Refreshes commands to discord, should not be ran by the user.
    */
   async refresh() {
-    let commands = [];
+    let commands: RESTPostAPIChatInputApplicationCommandsJSONBody[] = [];
     for (let key of this.commands.keys()) {
       let v = this.commands.get(key)!;
       let opt = v.options;
@@ -245,6 +246,7 @@ export class SilkDC<TCustomState> {
       );
 
       this.config.http_proxy.run_if_some((v) => {
+        // @ts-ignore
         rest.setAgent(new ProxyAgent(v));
       });
       const data = await rest.put(

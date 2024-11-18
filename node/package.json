@@ -1,0 +1,19 @@
+{
+  "name": "sk-sfl",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^22.9.0"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "node-global-proxy": "^1.0.1",
+    "undici": "^6.21.0"
+  }
+}
