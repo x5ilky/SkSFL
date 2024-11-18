@@ -70,7 +70,6 @@ export const ch = {
   none: (predicate: (value: any) => boolean) => (values: any[]) => values.every(value => !predicate(value)),
 
   sum: (values: number[]) => values.reduce((a, b) => a + b, 0),
-
 };
 
 // const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];

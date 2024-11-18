@@ -27,14 +27,20 @@ import {
   Routes,
   SlashCommandBuilder,
   SlashCommandSubcommandBuilder,
+  ChannelType
 } from 'npm:discord.js';
 
 import path from 'node:path';
 import proxy from 'npm:node-global-proxy';
-import { Dispatcher, ProxyAgent } from 'npm:undici';
+import { ProxyAgent } from 'npm:undici';
 
 import rd from 'node:readline';
 import process from "node:process";
+
+// #begin_import
+import { SkOption } from "../shared/SkOp.ts";
+import { Logger, LogLevel } from "../shared/SkLg.ts";
+// #end_import
 
 const question = (prompt: string): Promise<string> => {
   return new Promise<string>((res) => {
@@ -53,69 +59,29 @@ const question = (prompt: string): Promise<string> => {
 interface SilkDCConfig {
   token: string;
   commandsDir: string;
-  http_proxy: SDCOption<string>;
+  http_proxy: SkOption<string>;
   cooldownIgnore: string[];
 }
-
-export class SDCOption<T> {
-  __v: TOption<T>;
-  constructor(v: TOption<T>) {
-    this.__v = v;
-  }
-
-  is_some(): this is { __v: Some<T> } {
-    return this.__v.__op;
-  }
-
-  is_none(): this is { __v: None } {
-    return !this.__v.__op;
-  }
-
-  unwrap(): T {
-    return this.expect('Unwrap failed on Option<T>');
-  }
-
-  unwrap_or(v: T): T {
-    return this.is_some() ? this.__v.val : v;
-  }
-
-  expect(msg: string): T {
-    if (this.is_none()) {
-      throw new Error(msg);
-    } else {
-      return this.__v.val!;
-    }
-  }
-
-  run_if_some(cb: (v: T) => void): boolean {
-    if (this.is_some()) {
-      cb(this.unwrap());
-      return true;
-    } else {
-      return false;
-    }
-  }
-}
-
-export type Some<T> = { __op: true; val: T };
-export const makesome = <T>(val: T): Some<T> => ({ __op: true, val });
-export const Some = <T>(val: T): SDCOption<T> => new SDCOption(makesome(val));
-export type None = { __op: false; val: null };
-export const makenone = <T>(): None => ({ __op: false, val: null });
-export const None = <T>(): SDCOption<T> => new SDCOption<T>(makenone());
-export type TOption<T> = Some<T> | None;
 
 export class SilkDC<TCustomState> {
   client: Client;
   commands: Map<string, SilkDCCommand<TCustomState>>;
   customCommands: { [name: string]: (v: string) => void | Promise<void> };
   cooldown: { [name: string]: { [id: string]: number } };
+  logger: Logger;
 
   constructor(
     public config: SilkDCConfig,
     options: ClientOptions,
-    public customState: TCustomState
+    public customState: TCustomState,
+    logger: Logger
   ) {
+    this.logger = logger;
+    this.logger.config.prefixTags?.push({
+      color: [203, 105, 170],
+      name: "SDC",
+      priority: -10
+    })
     this.cooldown = {};
     this.config.http_proxy.run_if_some((pr) => {
       proxy.default.setConfig({
@@ -125,11 +91,12 @@ export class SilkDC<TCustomState> {
 
       proxy.default.start();
       options.rest ||= {};
-      options.rest.agent = new ProxyAgent(pr) as Dispatcher;
+      // deno-lint-ignore no-explicit-any
+      options.rest.agent = new ProxyAgent(pr) as any;
     });
     this.client = new Client(options);
     this.client.on('ready', (cl) => {
-      console.log(`\n[SDC]: Ready, logged in as ${cl.user.username}`);
+      this.logger.info(`Ready, logged in as ${cl.user.username}`);
     });
     this.commands = new Map();
 
@@ -137,7 +104,7 @@ export class SilkDC<TCustomState> {
       if (interaction.isAutocomplete()) {
         const cmd = this.commands.get(interaction.commandName);
         if (cmd === undefined) {
-          console.error(
+          this.logger.error(
             `Interaction received for command: ${interaction.commandName}, but none was found?`
           );
           return;
@@ -148,7 +115,7 @@ export class SilkDC<TCustomState> {
       } else if (interaction.isChatInputCommand()) {
         const cmd = this.commands.get(interaction.commandName);
         if (cmd === undefined) {
-          console.error(
+          this.logger.error(
             `Interaction received for command: ${interaction.commandName}, but none was found?`
           );
           return;
@@ -178,12 +145,12 @@ export class SilkDC<TCustomState> {
             await interaction.deferReply();
             cmd.execute(interaction, this);
           } catch (e) {
-            console.error(e);
+            this.logger.error(`${e}`);
           }
           this.cooldown[id][interaction.commandName] =
             Date.now() + (cmd.cooldown ?? 5000);
         } catch (e) {
-          console.error(`Error: \n\n${e}\n\n`);
+          this.logger.error(`Error: \n\n${e}\n\n`);
         }
       }
     });
@@ -196,15 +163,15 @@ export class SilkDC<TCustomState> {
    */
   async init() {
     const addSubcommand = async (_subc: string[], p: string) => {
-      for await (const fstr of await Deno.readDir(p)) {
-        const fp = path.join(p, fstr);
+      for await (const fstr of Deno.readDir(p)) {
+        const fp = path.join(p, fstr.name);
         const st = await Deno.stat(fp);
-        if (!st.isDirectory()) {
-          const f: SilkDCCommand<TCustomState> = await import('./' + fp).default;
-          console.log(
-            `\n[INFO] Loaded command: ${fstr} |  Desc: ${f.description} | Path: ${'./' + path.join(p, fstr)}`
+        if (!st.isDirectory) {
+          const f: SilkDCCommand<TCustomState> = (await import('./' + fp)).default;
+          this.logger.info(
+            `Loaded command: ${fstr} |  Desc: ${f.description} | Path: ${'./' + path.join(p, fstr.name)}`
           );
-          this.commands.set(path.basename(fstr, '.ts'), f);
+          this.commands.set(path.basename(fstr.name, '.ts'), f);
         }
       }
     };
@@ -220,7 +187,7 @@ export class SilkDC<TCustomState> {
     for (const key of this.commands.keys()) {
       const v = this.commands.get(key)!;
       const opt = v.options;
-      console.log(`[DEBUG] ${key} ${JSON.stringify(v.description)}`);
+      this.logger.debug(`${key} ${JSON.stringify(v.description)}`);
       if (opt.is_some()) {
         const op = opt.unwrap().setName(key).setDescription(v.description);
         commands.push(op.toJSON());
@@ -238,23 +205,26 @@ export class SilkDC<TCustomState> {
     // and deploy your commands!
 
     try {
-      console.log(
-        `Started refreshing ${commands.length} application (/) commands.`
+      this.logger.start(
+        LogLevel.INFO,
+        `Refreshing ${commands.length} application (/) commands.`
       );
 
       this.config.http_proxy.run_if_some((v) => {
-        rest.setAgent(new ProxyAgent(v));
+        // deno-lint-ignore no-explicit-any
+        rest.setAgent(new ProxyAgent(v) as any);
       });
       const _data = await rest.put(
         Routes.applicationCommands(this.client.user!.id),
         { body: commands }
       );
 
-      console.log(
+      this.logger.end(
+        LogLevel.INFO,
         `Successfully reloaded ${commands.length} application (/) commands.`
       );
     } catch (error) {
-      console.error(error);
+      this.logger.error(`${error}`);
     }
   }
 
@@ -266,34 +236,34 @@ export class SilkDC<TCustomState> {
     while (true) {
       const input: string = await question('> ');
       if (input === 'rfrCmd') {
-        console.log('Starting refresh...');
+        this.logger.start(LogLevel.INFO, 'Starting refresh...');
         await this.refresh();
-        console.log('Refresh finished.');
+        this.logger.end(LogLevel.INFO, 'Refresh finished.');
       } else if (input === 'quit') {
-        console.log('Quitting...');
+        this.logger.start(LogLevel.INFO, 'Quitting...');
         process.exit(0);
       } else if (input === 'getDevLink') {
-        console.log(
+        this.logger.info(
           `https://discord.com/api/oauth2/authorize?client_id=${
             this.client.user!.id
           }&permissions=8&scope=bot+applications.commands`
         );
-        console.log('Do not use this for production, it contains admin perms');
+        this.logger.info('Do not use this for production, it contains admin perms');
       } else if (input === 'help') {
-        console.log(`Base commands:
+        this.logger.info(`Base commands:
 \trfrCmd - refreshes commands to the discord api
 \tquit - quits the command
 \tgetDevLink - gets a dev invite link with admin perms and bot and application.commands scope
 \thelp - prints this
 Custom commands:`);
         for (const cmd in this.customCommands) {
-          console.log('\t' + cmd);
+          this.logger.info('\t' + cmd);
         }
       } else {
         if (input.split(/\s+/g)[0] in this.customCommands) {
           this.customCommands[input.split(/\s+/g)[0]](input);
         } else {
-          console.error('Unknown command');
+          this.logger.error('Unknown command');
         }
       }
     }
@@ -317,8 +287,8 @@ export interface SilkDCCommand<T> {
     instance: SilkDC<T>
   ) => Promise<void>;
   description: string;
-  options: SDCOption<SlashCommandBuilder>;
-  subOptions: SDCOption<SlashCommandSubcommandBuilder>;
+  options: SkOption<SlashCommandBuilder>;
+  subOptions: SkOption<SlashCommandSubcommandBuilder>;
   cooldown?: number;
   autocomplete?: (Interaction: AutocompleteInteraction) => Promise<void>;
 }
@@ -364,8 +334,10 @@ export function createActionBar(
     row.addComponents(but);
     const filter = (i: ButtonInteraction) => i.customId === id;
 
+    if (interaction.channel?.type !== ChannelType.GuildText) return;
     const collector = (interaction.channel as GuildTextBasedChannel)!.createMessageComponentCollector({
-      filter,
+      // deno-lint-ignore no-explicit-any
+      filter: filter as any,
       time: 5 * 60 * 1000,
     });
 
@@ -412,7 +384,7 @@ export type OrPromise<T> = T | Promise<T>;
  * Class for building menus
  */
 export class MenuBuilder<T> {
-  buttonStates: { but: MenuBuilderButton; id: string }[];
+  buttonStates: { but: MenuBuilderButton<T>; id: string }[];
   currentCollector: InteractionCollector<ButtonInteraction> | undefined;
 
   constructor(
@@ -420,7 +392,7 @@ export class MenuBuilder<T> {
     // deno-lint-ignore no-explicit-any
     public callback: (...state: any[]) => OrPromise<{
       embed: EmbedBuilder;
-      buttons: MenuBuilderButton[];
+      buttons: MenuBuilderButton<T>[];
       attachments: AttachmentBuilder[];
     }>,
     public allowedIds: string[]
@@ -438,7 +410,7 @@ export class MenuBuilder<T> {
     embed: EmbedBuilder;
     rows: ActionRowBuilder<ButtonBuilder>[];
     attachments: AttachmentBuilder[];
-    buttonStates: { but: MenuBuilderButton; id: string }[];
+    buttonStates: { but: MenuBuilderButton<T>; id: string }[];
   }> {
     const rows: ActionRowBuilder[] = [];
     const cbRes = await this.callback(...state);
@@ -495,7 +467,7 @@ export class MenuBuilder<T> {
           // deno-lint-ignore no-explicit-any
           filter: filter as any,
           time: 60 * 60 * 1000,
-        });
+        }) as InteractionCollector<ButtonInteraction>;
 
       if (this.currentCollector === undefined) {
         this.interaction.followUp({
@@ -565,9 +537,9 @@ export class MenuBuilder<T> {
           // deno-lint-ignore no-explicit-any
           filter: filter as any,
           time: 60 * 60 * 1000,
-        });
+        }) as InteractionCollector<ButtonInteraction>;
 
-      this.currentCollector.on('collect', async (i: ButtonInteraction) => {
+      this.currentCollector?.on('collect', async (i: ButtonInteraction) => {
         const d = t.buttonStates.find((a) => a.id === i.customId);
         if (d !== undefined) {
           if (

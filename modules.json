@@ -2,7 +2,7 @@
     "SkDc": {
         "deno": "./deno/SkDc.ts",
         "node": "./node/SkDc.ts",
-        "dependencies": []
+        "dependencies": ["SkLg", "SkOp"]
     },
     "SkLt": {
         "deno": "./shared/SkLt.ts",
@@ -28,5 +28,10 @@
         "deno": "./shared/SkAp.ts",
         "node": "./shared/SkAp.ts",
         "dependencies": ["SkAn"]
+    },
+    "SkOp": {
+        "deno": "./shared/SkOp.ts",
+        "node": "./shared/SkOp.ts",
+        "dependencies": []
     }
 }

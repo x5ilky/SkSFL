@@ -1,5 +1,5 @@
 /**
- * Link: https://gist.github.com/x5ilky/9d27df4f2e9c8ebf3f797570340510e3
+ * Link: https://github.com/x5ilky/SkSFL
  * Version: 1.0.1
  * Author: x5ilky (https://github.com/x5ilky)
  * 
@@ -24,22 +24,29 @@ import {
   GuildTextBasedChannel,
   InteractionCollector,
   REST,
-  RESTPostAPIChatInputApplicationCommandsJSONBody,
   Routes,
   SlashCommandBuilder,
   SlashCommandSubcommandBuilder,
+  ChannelType,
+  RESTPostAPIChatInputApplicationCommandsJSONBody
 } from 'discord.js';
-import fs from 'fs/promises';
+
 import path from 'path';
 import proxy from 'node-global-proxy';
 import { ProxyAgent } from 'undici';
+import fs from 'fs/promises';
 
 import rd from 'readline';
 
-const question = async (prompt: string): Promise<string> => {
+// #begin_import
+import { SkOption } from "../shared/SkOp.ts";
+import { Logger, LogLevel } from "../shared/SkLg.ts";
+// #end_import
+
+const question = (prompt: string): Promise<string> => {
   return new Promise<string>((res) => {
     const readline = rd.createInterface({
-    //@ts-ignore
+    //@ts-ignore: weird error, guarenteed to work
       input: process.stdin,
       output: process.stdout,
     });
@@ -53,91 +60,52 @@ const question = async (prompt: string): Promise<string> => {
 interface SilkDCConfig {
   token: string;
   commandsDir: string;
-  http_proxy: SDCOption<string>;
+  http_proxy: SkOption<string>;
   cooldownIgnore: string[];
 }
-
-export class SDCOption<T> {
-  __v: TOption<T>;
-  constructor(v: TOption<T>) {
-    this.__v = v;
-  }
-
-  is_some(): this is { __v: Some<T> } {
-    return this.__v.__op;
-  }
-
-  is_none(): this is { __v: None } {
-    return !this.__v.__op;
-  }
-
-  unwrap(): T {
-    return this.expect('Unwrap failed on Option<T>');
-  }
-
-  unwrap_or(v: T): T {
-    return this.is_some() ? this.__v.val : v;
-  }
-
-  expect(msg: string): T {
-    if (this.is_none()) {
-      throw new Error(msg);
-    } else {
-      return this.__v.val!;
-    }
-  }
-
-  run_if_some(cb: (v: T) => void): boolean {
-    if (this.is_some()) {
-      cb(this.unwrap());
-      return true;
-    } else {
-      return false;
-    }
-  }
-}
-
-export type Some<T> = { __op: true; val: T };
-export const makesome = <T>(val: T): Some<T> => ({ __op: true, val });
-export const Some = <T>(val: T): SDCOption<T> => new SDCOption(makesome(val));
-export type None = { __op: false; val: null };
-export const makenone = <T>(): None => ({ __op: false, val: null });
-export const None = <T>(): SDCOption<T> => new SDCOption<T>(makenone());
-export type TOption<T> = Some<T> | None;
 
 export class SilkDC<TCustomState> {
   client: Client;
   commands: Map<string, SilkDCCommand<TCustomState>>;
   customCommands: { [name: string]: (v: string) => void | Promise<void> };
   cooldown: { [name: string]: { [id: string]: number } };
+  logger: Logger;
 
   constructor(
     public config: SilkDCConfig,
     options: ClientOptions,
-    public customState: TCustomState
+    public customState: TCustomState,
+    logger: Logger
   ) {
+    this.logger = logger;
+    this.logger.config.prefixTags?.push({
+      color: [203, 105, 170],
+      name: "SDC",
+      priority: -10
+    })
     this.cooldown = {};
     this.config.http_proxy.run_if_some((pr) => {
       proxy.setConfig({
         http: pr,
         https: '',
       });
+
       proxy.start();
       options.rest ||= {};
-      // @ts-ignore
-      options.rest.agent = new ProxyAgent(pr);
+      // deno-lint-ignore no-explicit-any
+      options.rest.agent = new ProxyAgent(pr) as any;
     });
     this.client = new Client(options);
     this.client.on('ready', (cl) => {
-      console.log(`\n[SDC]: Ready, logged in as ${cl.user.username}`);
+      this.logger.info(`Ready, logged in as ${cl.user.username}`);
     });
     this.commands = new Map();
 
     this.client.on(Events.InteractionCreate, async (interaction) => {
       if (interaction.isAutocomplete()) {
-        let cmd = this.commands.get(interaction.commandName);
+        const cmd = this.commands.get(interaction.commandName);
         if (cmd === undefined) {
-          console.error(
+          this.logger.error(
             `Interaction received for command: ${interaction.commandName}, but none was found?`
           );
           return;
@@ -146,21 +114,21 @@ export class SilkDC<TCustomState> {
           await cmd.autocomplete(interaction);
         }
       } else if (interaction.isChatInputCommand()) {
-        let cmd = this.commands.get(interaction.commandName);
+        const cmd = this.commands.get(interaction.commandName);
         if (cmd === undefined) {
-          console.error(
+          this.logger.error(
             `Interaction received for command: ${interaction.commandName}, but none was found?`
           );
           return;
         }
-        let id = interaction.user.id;
+        const id = interaction.user.id;
 
         try {
           if (!(id in this.cooldown)) {
             this.cooldown[id] = {};
           }
           if (interaction.commandName in this.cooldown[id]) {
-            let cdExpire = this.cooldown[id][interaction.commandName];
+            const cdExpire = this.cooldown[id][interaction.commandName];
             if (
               Date.now() < cdExpire && !(this.config.cooldownIgnore.includes(interaction.user.id))
             ) {
@@ -178,12 +146,12 @@ export class SilkDC<TCustomState> {
             await interaction.deferReply();
             cmd.execute(interaction, this);
           } catch (e) {
-            console.error(e);
+            this.logger.error(`${e}`);
           }
           this.cooldown[id][interaction.commandName] =
             Date.now() + (cmd.cooldown ?? 5000);
-        } catch (e: any) {
-          console.error(`Error: \n\n${e}\n\n`);
+        } catch (e) {
+          this.logger.error(`Error: \n\n${e}\n\n`);
         }
       }
     });
@@ -195,40 +163,37 @@ export class SilkDC<TCustomState> {
    * Initialize commands from the `commands_dir` config option
    */
   async init() {
-    const addSubcommand = async (subc: string[], p: string) => {
-      for (let fstr of await fs.readdir(p)) {
-        let fp = path.join(p, fstr);
-        let st = await fs.stat(fp);
-        if (st.isDirectory()) {
-        } else {
-          let f: SilkDCCommand<TCustomState> = require('./' + fp).default;
-          console.log(
-            `\n[INFO] Loaded command: ${fstr} |  Desc: ${
-              f.description
-            } | Path: ${'./' + path.join(p, fstr)}`
+    const addSubcommand = async (_subc: string[], p: string) => {
+      for (const fstr of await fs.readdir(p)) {
+        const fp = path.join(p, fstr);
+        const st = await fs.stat(fp);
+        if (!st.isDirectory()) {
+          const f: SilkDCCommand<TCustomState> = (await import('./' + fp)).default;
+          this.logger.info(
+            `Loaded command: ${fstr} |  Desc: ${f.description} | Path: ${'./' + path.join(p, fstr)}`
           );
           this.commands.set(path.basename(fstr, '.ts'), f);
         }
       }
     };
 
-    addSubcommand([], this.config.commandsDir);
+    await addSubcommand([], this.config.commandsDir);
   }
 
   /**
    *  Refreshes commands to discord, should not be ran by the user.
    */
   async refresh() {
-    let commands: RESTPostAPIChatInputApplicationCommandsJSONBody[] = [];
-    for (let key of this.commands.keys()) {
-      let v = this.commands.get(key)!;
-      let opt = v.options;
-      console.log(`[DEBUG] ${key} ${JSON.stringify(v.description)}`);
+    const commands: RESTPostAPIChatInputApplicationCommandsJSONBody[] = [];
+    for (const key of this.commands.keys()) {
+      const v = this.commands.get(key)!;
+      const opt = v.options;
+      this.logger.debug(`${key} ${JSON.stringify(v.description)}`);
       if (opt.is_some()) {
-        let op = opt.unwrap().setName(key).setDescription(v.description);
+        const op = opt.unwrap().setName(key).setDescription(v.description);
         commands.push(op.toJSON());
       } else {
-        let op = new SlashCommandBuilder()
+        const op = new SlashCommandBuilder()
           .setName(key)
           .setDescription(v.description);
 
@@ -241,24 +206,26 @@ export class SilkDC<TCustomState> {
     // and deploy your commands!
 
     try {
-      console.log(
-        `Started refreshing ${commands.length} application (/) commands.`
+      this.logger.start(
+        LogLevel.INFO,
+        `Refreshing ${commands.length} application (/) commands.`
       );
 
       this.config.http_proxy.run_if_some((v) => {
-        // @ts-ignore
-        rest.setAgent(new ProxyAgent(v));
+        // deno-lint-ignore no-explicit-any
+        rest.setAgent(new ProxyAgent(v) as any);
       });
-      const data = await rest.put(
+      const _data = await rest.put(
         Routes.applicationCommands(this.client.user!.id),
         { body: commands }
       );
 
-      console.log(
+      this.logger.end(
+        LogLevel.INFO,
         `Successfully reloaded ${commands.length} application (/) commands.`
       );
     } catch (error) {
-      console.error(error);
+      this.logger.error(`${error}`);
     }
   }
 
@@ -268,36 +235,36 @@ export class SilkDC<TCustomState> {
   async serve() {
     await this.client.login(this.config.token);
     while (true) {
-      let input: string = await question('> ');
+      const input: string = await question('> ');
       if (input === 'rfrCmd') {
-        console.log('Starting refresh...');
+        this.logger.start(LogLevel.INFO, 'Starting refresh...');
         await this.refresh();
-        console.log('Refresh finished.');
+        this.logger.end(LogLevel.INFO, 'Refresh finished.');
       } else if (input === 'quit') {
-        console.log('Quitting...');
+        this.logger.start(LogLevel.INFO, 'Quitting...');
         process.exit(0);
       } else if (input === 'getDevLink') {
-        console.log(
+        this.logger.info(
           `https://discord.com/api/oauth2/authorize?client_id=${
             this.client.user!.id
           }&permissions=8&scope=bot+applications.commands`
         );
-        console.log('Do not use this for production, it contains admin perms');
+        this.logger.info('Do not use this for production, it contains admin perms');
       } else if (input === 'help') {
-        console.log(`Base commands:
+        this.logger.info(`Base commands:
 \trfrCmd - refreshes commands to the discord api
 \tquit - quits the command
 \tgetDevLink - gets a dev invite link with admin perms and bot and application.commands scope
 \thelp - prints this
 Custom commands:`);
-        for (let cmd in this.customCommands) {
-          console.log('\t' + cmd);
+        for (const cmd in this.customCommands) {
+          this.logger.info('\t' + cmd);
         }
       } else {
         if (input.split(/\s+/g)[0] in this.customCommands) {
           this.customCommands[input.split(/\s+/g)[0]](input);
         } else {
-          console.error('Unknown command');
+          this.logger.error('Unknown command');
         }
       }
     }
@@ -309,7 +276,7 @@ Custom commands:`);
    * @param cb callback that is called when the command is runned
    */
   addCustomCommand(names: string[], cb: (v: string) => void) {
-    for (let name of names) {
+    for (const name of names) {
       this.customCommands[name] = cb;
     }
   }
@@ -321,8 +288,8 @@ export interface SilkDCCommand<T> {
     instance: SilkDC<T>
   ) => Promise<void>;
   description: string;
-  options: SDCOption<SlashCommandBuilder>;
-  subOptions: SDCOption<SlashCommandSubcommandBuilder>;
+  options: SkOption<SlashCommandBuilder>;
+  subOptions: SkOption<SlashCommandSubcommandBuilder>;
   cooldown?: number;
   autocomplete?: (Interaction: AutocompleteInteraction) => Promise<void>;
 }
@@ -331,7 +298,7 @@ export const SubcommandHelper: <T>(cmds: {
   [id: string]: SilkDCCommand<T>;
 }) => SilkDCCommand<T>['execute'] = (cmds) => {
   return async (interaction, instance) => {
-    let sub = interaction.options.getSubcommand();
+    const sub = interaction.options.getSubcommand();
     await cmds[sub].execute(interaction, instance);
   };
 };
@@ -357,19 +324,21 @@ export function createActionBar(
   allowedIds?: 'all' | string[]
 ): ActionRowBuilder<ButtonBuilder> {
   
-  let row = new ActionRowBuilder();
-  buttons.forEach((button, index) => {
-    let id = `button-${Math.floor(Math.random() * 1_000_000_000_000_000)}`;
-    let but = new ButtonBuilder()
+  const row = new ActionRowBuilder();
+  buttons.forEach((button) => {
+    const id = `button-${Math.floor(Math.random() * 1_000_000_000_000_000)}`;
+    const but = new ButtonBuilder()
       .setLabel(button.label)
       .setStyle(button.style)
       .setDisabled(button.disabled)
       .setCustomId(id);
     row.addComponents(but);
-    const filter = (i: any) => i.customId === id;
+    const filter = (i: ButtonInteraction) => i.customId === id;
 
+    if (interaction.channel?.type !== ChannelType.GuildText) return;
     const collector = (interaction.channel as GuildTextBasedChannel)!.createMessageComponentCollector({
-      filter,
+      // deno-lint-ignore no-explicit-any
+      filter: filter as any,
       time: 5 * 60 * 1000,
     });
 
@@ -383,7 +352,7 @@ export function createActionBar(
           button.onclick(i, row);
         }
       } else {
-        i.reply({
+        await i.reply({
           content: "This isn't your interaction!",
           ephemeral: true,
         });
@@ -394,19 +363,19 @@ export function createActionBar(
   return row as ActionRowBuilder<ButtonBuilder>;
 }
 
-export type MenuBuilderButton = {
+export type MenuBuilderButton<T> = {
   label: string;
   style: ButtonStyle;
   disabled?: boolean;
-  onClick: MenuBuilderButtonCallback;
+  onClick: MenuBuilderButtonCallback<T>;
   emoji?: string;
 };
 
-export type MenuBuilderButtonCallback = (
-  state: any[],
+export type MenuBuilderButtonCallback<T> = (
+  state: T[],
   i: ButtonInteraction,
   int: InteractionType,
-  row: MenuBuilder
+  row: MenuBuilder<T>
 ) => void;
 
 export type InteractionType = ChatInputCommandInteraction<CacheType>;
@@ -415,15 +384,16 @@ export type OrPromise<T> = T | Promise<T>;
 /**
  * Class for building menus
  */
-export class MenuBuilder {
-  buttonStates: { but: MenuBuilderButton; id: string }[];
-  currentCollector: InteractionCollector<any> | undefined;
+export class MenuBuilder<T> {
+  buttonStates: { but: MenuBuilderButton<T>; id: string }[];
+  currentCollector: InteractionCollector<ButtonInteraction> | undefined;
 
   constructor(
     public interaction: InteractionType,
+    // deno-lint-ignore no-explicit-any
     public callback: (...state: any[]) => OrPromise<{
       embed: EmbedBuilder;
-      buttons: MenuBuilderButton[];
+      buttons: MenuBuilderButton<T>[];
       attachments: AttachmentBuilder[];
     }>,
     public allowedIds: string[]
@@ -437,24 +407,24 @@ export class MenuBuilder {
     else this.currentCollector.stop();
   }
 
-  async getData(state: any[]): Promise<{
+  async getData(state: T[]): Promise<{
     embed: EmbedBuilder;
     rows: ActionRowBuilder<ButtonBuilder>[];
     attachments: AttachmentBuilder[];
-    buttonStates: { but: MenuBuilderButton; id: string }[];
+    buttonStates: { but: MenuBuilderButton<T>; id: string }[];
   }> {
-    let rows: ActionRowBuilder[] = [];
-    let cbRes = await this.callback(...state);
+    const rows: ActionRowBuilder[] = [];
+    const cbRes = await this.callback(...state);
     this.buttonStates = [];
     cbRes.buttons.forEach((button, index) => {
       if (index % 5 === 0) {
         rows.push(new ActionRowBuilder());
       }
-      let p = Math.floor(index / 5);
-      let id = `button${
+      const p = Math.floor(index / 5);
+      const id = `button${
         Math.floor(Math.random() * 1_000_000_000_000_000) % Date.now()
       }`;
-      let but = new ButtonBuilder()
+      const but = new ButtonBuilder()
         .setLabel(button.label)
         .setStyle(button.style)
         .setDisabled(button.disabled)
@@ -480,10 +450,10 @@ export class MenuBuilder {
    * @param state state to be shared throughout operations
    * @returns Nothing
    */
-  async send(...state: any[]) {
-    let t = await this.getData(state);
+  async send(...state: T[]) {
+    const t = await this.getData(state);
 
-    let msg = await this.interaction.reply({
+    const _msg = await this.interaction.reply({
       embeds: [t.embed],
       components: t.rows as ActionRowBuilder<ButtonBuilder>[],
       files: t.attachments,
@@ -494,10 +464,11 @@ export class MenuBuilder {
 
     try {
       this.currentCollector =
-        (this.interaction.channel as GuildTextBasedChannel)?.createMessageComponentCollector({
+        (this.interaction.channel as GuildTextBasedChannel)!.createMessageComponentCollector({
+          // deno-lint-ignore no-explicit-any
           filter: filter as any,
           time: 60 * 60 * 1000,
-        });
+        }) as InteractionCollector<ButtonInteraction>;
 
       if (this.currentCollector === undefined) {
         this.interaction.followUp({
@@ -509,8 +480,8 @@ export class MenuBuilder {
       }
 
       this.currentCollector.on('collect', async (i: ButtonInteraction) => {
-        let bstates = (() => this.buttonStates)();
-        let d = bstates.find((a) => a.id === i.customId)!;
+        const bstates = (() => this.buttonStates)();
+        const d = bstates.find((a) => a.id === i.customId)!;
         if (d !== undefined) {
           if (
             i.user.id === this.interaction.user.id &&
@@ -522,7 +493,7 @@ export class MenuBuilder {
               d.but.onClick(state, i, this.interaction, this);
             }
           } else {
-            i.reply({
+            await i.reply({
               content: "This isn't your interaction!",
               ephemeral: true,
             });
@@ -532,12 +503,12 @@ export class MenuBuilder {
     } catch (e) {
       console.log(e);
       if (this.interaction.replied || this.interaction.deferred) {
-        this.interaction.followUp({
+        await this.interaction.followUp({
           content: 'No interaction in 5 minutes, cancelling interaction...',
           ephemeral: true,
         });
       } else {
-        this.interaction.reply({
+        await this.interaction.reply({
           content: 'No interaction in 5 minutes, cancelling interaction...',
           ephemeral: true,
         });
@@ -551,8 +522,8 @@ export class MenuBuilder {
    * Always use `i.deferUpdate()`
    * @param state state to be shared throughout operation
    */
-  async edit(...state: any[]) {
-    let t = await this.getData(state);
+  async edit(...state: T[]) {
+    const t = await this.getData(state);
     // console.log(`json: start\n${JSON.stringify(t[0].toJSON())}\nend`)
     // console.log(`components: start\n${JSON.stringify(t[1].toJSON())}\nend`)
 
@@ -564,12 +535,13 @@ export class MenuBuilder {
     try {
       this.currentCollector =
         (this.interaction.channel as GuildTextBasedChannel)!.createMessageComponentCollector({
+          // deno-lint-ignore no-explicit-any
           filter: filter as any,
           time: 60 * 60 * 1000,
-        });
+        }) as InteractionCollector<ButtonInteraction>;
 
-      this.currentCollector.on('collect', async (i: ButtonInteraction) => {
-        let d = t.buttonStates.find((a) => a.id === i.customId);
+      this.currentCollector?.on('collect', async (i: ButtonInteraction) => {
+        const d = t.buttonStates.find((a) => a.id === i.customId);
         if (d !== undefined) {
           if (
             i.user.id === this.interaction.user.id &&
@@ -606,12 +578,12 @@ export class MenuBuilder {
    * Disable buttons
    */
   async disable() {
-    let rows: ActionRowBuilder[] = [];
-    let cbRes = await this.callback();
+    const rows: ActionRowBuilder[] = [];
+    const cbRes = await this.callback();
     cbRes.buttons.forEach((button, index) => {
       if (index % 5 === 0) rows.push(new ActionRowBuilder());
-      let row = rows[Math.floor(index / 5)];
-      let but = new ButtonBuilder()
+      const row = rows[Math.floor(index / 5)];
+      const but = new ButtonBuilder()
         .setLabel(button.label)
         .setStyle(button.style)
         .setDisabled(true)
