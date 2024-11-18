@@ -1,3 +1,8 @@
+// #begin_import
+import { Ansi } from "./SkAn.ts";
+// #end_import
+
+
 export type LoggerTag = {
     name: string,
     color: [number, number, number],
@@ -54,7 +59,7 @@ export class Logger {
     printWithTags(tags: LoggerTag[], ...args: string[]) {
         const tag = (a: LoggerTag) => {
             const raw = `${this.config.tagPrefix}${a.name}${this.config.tagSuffix}`.padEnd(this.maxTagLength, " ");
-            return `\x1b[38;2;${a.color[0]};${a.color[1]};${a.color[2]}m${raw}\x1b[0m`;
+            return `${Ansi.rgb(a.color[0], a.color[1], a.color[2])}${raw}${Ansi.reset}`;
         }
         console.log(`${tags.map((a) => tag(a).padStart(this.maxTagLength, "#")).join(' ')} ${args.join(' ')}`);
     }

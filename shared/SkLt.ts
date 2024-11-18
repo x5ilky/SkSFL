@@ -1,14 +1,13 @@
-// https://gist.github.com/x5ilky/c8d851257e6c0c73fc781b14ab683dcb
-import { randInt } from './random';
-// Uses lodash to clone objects, implement own if you don't want dependencies
-import _ from 'lodash';
+// #begin_import
+import { randInt } from './SkRd.ts';
+// #end_import
 
 export class LootTable<T> {
   constructor(public table: [T, number][]) {}
 
   expand() {
-    let out: T[] = [];
-    for (let item of this.table) {
+    const out: T[] = [];
+    for (const item of this.table) {
       for (let i = 0; i < item[1]; i++) {
         out.push(item[0]);
       }
@@ -18,16 +17,16 @@ export class LootTable<T> {
 
   totalAmount() {
     let j = 0;
-    for (let item of this.table) {
+    for (const item of this.table) {
       j += item[1];
     }
     return j;
   }
 
   random() {
-    let rand = randInt(0, this.totalAmount());
+    const rand = randInt(0, this.totalAmount());
     let counter = 0;
-    for (let item of this.table) {
+    for (const item of this.table) {
       counter += item[1];
       if (counter > rand) {
         return item[0];
@@ -37,10 +36,10 @@ export class LootTable<T> {
   }
 
   randomIndex(): [T, number] {
-    let rand = randInt(0, this.totalAmount());
+    const rand = randInt(0, this.totalAmount());
     let counter = 0;
     for (let i = 0; i < this.table.length; i++) {
-      let item = this.table[i];
+      const item = this.table[i];
       counter += item[1];
       if (counter > rand) {
         return [item[0], i];
@@ -59,21 +58,21 @@ export class IndexedLootTable<T> {
 
   totalAmount() {
     let j = 0;
-    for (let id in this.pTable) {
-      let item = this.pTable[id];
+    for (const id in this.pTable) {
+      const item = this.pTable[id];
       j += item.__weight;
     }
     return j;
   }
 
   random(): T & { __weight: number; __id: string } {
-    let rand = randInt(0, this.totalAmount());
+    const rand = randInt(0, this.totalAmount());
     let counter = 0;
-    for (let id in this.pTable) {
-      let item = this.pTable[id];
+    for (const id in this.pTable) {
+      const item = this.pTable[id];
       counter += item.__weight;
       if (counter > rand) {
-        let d = _.cloneDeep(item) as any;
+        const d = structuredClone(item) as T & { __weight: number; __id: string };
         d.__id = id;
         return d;
       }
@@ -109,14 +108,14 @@ export class ForcedLootTable<T> extends LootTable<T> {
     this.force = -1;
   }
 
-  random(): T {
+  override random(): T {
     if (this.force === -1) {
       return super.random();
     } else {
       return this.table[this.force][0];
     }
   }
-  randomIndex(): [T, number] {
+  override randomIndex(): [T, number] {
     if (this.force === -1) {
       return super.randomIndex();
     } else {

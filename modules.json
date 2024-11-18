@@ -1,0 +1,27 @@
+{
+    "SkDc": {
+        "deno": "./deno/SkDc.ts",
+        "node": "./node/SkDc.ts",
+        "dependencies": []
+    },
+    "SkLt": {
+        "deno": "./shared/SkLt.ts",
+        "node": "./shared/SkLt.ts",
+        "dependencies": ["SkRd"]
+    },
+    "SkRd": {
+        "deno": "./shared/SkRd.ts",
+        "node": "./shared/SkRd.ts",
+        "dependencies": []
+    },
+    "SkLg": {
+        "deno": "./shared/SkLg.ts",
+        "node": "./shared/SkLg.ts",
+        "dependencies": ["SkAn"]
+    },
+    "SkAn": {
+        "deno": "./shared/SkAn.ts",
+        "node": "./shared/SkAn.ts",
+        "dependencies": []
+    }
+}
