@@ -1,4 +1,3 @@
-"use strict";
 // (S)il(k) (A)rgument (P)arser
 
 // #begin_import
