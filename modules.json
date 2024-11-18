@@ -23,5 +23,10 @@
         "deno": "./shared/SkAn.ts",
         "node": "./shared/SkAn.ts",
         "dependencies": []
+    },
+    "SkAp": {
+        "deno": "./deno/SkAp.ts",
+        "node": "./node/SkAp.ts",
+        "dependencies": ["SkAn"]
     }
 }

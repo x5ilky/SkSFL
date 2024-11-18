@@ -1,18 +1,19 @@
 import modulesIndex from '../modules.json' with { type: 'json' };
+
 import * as path from 'jsr:@std/path';
 
 function usage() {
     console.log('-- SkAm');
     console.log('SUBCOMMANDS:');
-    console.log('  SkAm.ts build <modules> [options]');
+    console.log('  SkAm.ts build [options]');
     console.log('    Builds the specified modules');
     console.log('    Required options:');
     console.log('      -m, --modules <modules>');
     console.log('        The modules to build');
+    console.log('    Optional options:');
     console.log('      -r, --runtime <runtime>');
     console.log('        The runtime to build for');
     console.log('        Valid values: deno, node');
-    console.log('    Optional options:');
     console.log('      -o, --output <path>');
     console.log('        The path to output the built modules');
     Deno.exit(1);
