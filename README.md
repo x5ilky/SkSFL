@@ -5,11 +5,11 @@ writing typescript code.
 
 > SkSFL stands for **S**il**k**y **S**ingle **F**ile **L**ibraries.
 
-| Table of Contents |
-| ------------------ |
-| [Index](#sksfl) |
-| [Amalgamate](#amalgamate) |
-| [Modules](#modules) |
+- [SkSFL](#sksfl)
+  - [Amalgamate](#amalgamate)
+  - [Modules](#modules)
+  - [Tools](#tools)
+
 
 ## Amalgamate
 
@@ -41,3 +41,10 @@ deno run -A ./build/SkAm.ts build -m <modules> -r <runtime> -o <output file>
 | `SkLt` | **S**il**k** **L**oot **T**able      | Loot table (weighted random) implementation   |
 | `SkCh` | **S**il**k** **Ch**aining            | Value chaining                                |
 | `SkAp` | **S**il**k** **A**rgument **P**arser | Type safe shaped command line argument parser |
+
+## Tools
+
+| Tool   | Full Name                           | Description                  |
+| ------ | ----------------------------------- | ---------------------------- |
+| `SkAm` | **S**il**k** **Am**algamate         | Amalgamates modules together |
+| `SkTg` | **S**il**k** **T**ype **G**enerator | Generates types              |
