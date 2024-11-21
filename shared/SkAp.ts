@@ -15,6 +15,7 @@ export namespace skap {
     type SkapArgument = 
         SkapString<string> 
       | SkapNumber<string>
+      | SkapBoolean<string>
       | SkapSubcommand<SkapSubcommandShape>;
     function isSkapArgument(arg: SkapArgument): arg is SkapArgument {
         return arg instanceof SkapString || arg instanceof SkapNumber || arg instanceof SkapSubcommand;
@@ -38,6 +39,8 @@ export namespace skap {
       ? string | undefined 
       : T extends SkapNumber<string>
       ? number | undefined
+      : T extends SkapBoolean<string>
+      ? boolean
       : T extends SkapSubcommand<infer U extends SkapSubcommandShape> ? {commands: {
             [K in keyof U]: SkapInfer<U[K]> | undefined
         }, selected: keyof U} : never;
@@ -54,6 +57,9 @@ export namespace skap {
     }
     export function number<T extends string>(name: T): SkapNumber<T> {
         return new SkapNumber(name);
+    }
+    export function boolean<T extends string>(name: T): SkapBoolean<T> {
+        return new SkapBoolean(name);
     }
     class SkapString<T extends string> {
         name: T;
@@ -73,7 +79,7 @@ export namespace skap {
             this.__required = false;
             return this as SkapOptional<this>;
         }
-        description(description: string): SkapString<T> {
+        description(description: string): this {
             this.__description = description;
             return this;
         }
@@ -96,7 +102,21 @@ export namespace skap {
             this.__required = false;
             return this as SkapOptional<SkapNumber<T>>;
         }
-        description(description: string): SkapNumber<T> {
+        description(description: string): this {
+            this.__description = description;
+            return this;
+        }
+    }
+    class SkapBoolean<T extends string> {
+        name: T;
+        __description: string;
+        __required: boolean;
+        constructor(name: T, description: string = "", required: boolean = false) {
+            this.name = name;
+            this.__description = description;
+            this.__required = required;
+        }
+        description(description: string): this {
             this.__description = description;
             return this;
         }
@@ -157,6 +177,8 @@ export namespace skap {
                         commands[subcommandName] = this.shape[argName].shape[subcommandName].emptyBase();
                     }
                     out[argName] = {selected: undefined, commands: commands};
+                } else if (this.shape[argName] instanceof SkapBoolean) {
+                    out[argName] = false;
                 }
             }
             return out;
@@ -185,10 +207,17 @@ export namespace skap {
                         for (const subcommandName in argShape.shape) {
                             if (arg == subcommandName) {
                                 const [subcommandOut, subcommandRest] = argShape.shape[subcommandName].parseBase(args, settings);
-                                out[argName] = {selected: subcommandName, commands: subcommandOut};
+                                // deno-lint-ignore no-explicit-any
+                                const o: any = {};
+                                o[subcommandName] = subcommandOut;
+                                out[argName] = {selected: subcommandName, commands: o};
                                 args = subcommandRest;
                                 break;
                             }
+                        }
+                    } else if (argShape instanceof SkapBoolean) {
+                        if (arg == argShape.name) {
+                            out[argName] = true;
                         }
                     }
                 }
@@ -198,16 +227,18 @@ export namespace skap {
                 const argShape = this.shape[argName];
                 if (argShape instanceof SkapString) {
                     if (out[argName] === undefined && argShape.__required) {
-                        settings.customError!(`Missing required string argument ${argShape.name}`);
+                        settings.customError!(`Missing required string argument ${argShape.name}\n${this.usage()}`);
                     }
                 } else if (argShape instanceof SkapNumber) {
                     if (out[argName] === undefined && argShape.__required) {
-                        settings.customError!(`Missing required number argument ${argShape.name}`);
+                        settings.customError!(`Missing required number argument ${argShape.name}\n${this.usage()}`);
                     }
                 } else if (argShape instanceof SkapSubcommand) {
                     if (out[argName].selected === undefined && argShape.__required) {
-                        settings.customError!(`Missing required subcommand for ${argName}\n${this.usage()}`);
+                        settings.customError!(`Missing required subcommand for ${argName}\n${this.usage()}\n${this.usage()}`);
                     }
+                } else if (argShape instanceof SkapBoolean) {
+                    // pass
                 }
             }
 
@@ -250,6 +281,8 @@ export namespace skap {
                         out += `  ${Ansi.bold}${this.shape[arg].name}${Ansi.reset} <string>`;
                     } else if (this.shape[arg] instanceof SkapNumber) {
                         out += `  ${Ansi.bold}${this.shape[arg].name}${Ansi.reset} <number>`;
+                    } else if (this.shape[arg] instanceof SkapBoolean) {
+                        out += `  ${Ansi.bold}${this.shape[arg].name}${Ansi.reset}`;
                     }
                     if (this.shape[arg].__required) {
                         out += `${Ansi.red} (required)`;
