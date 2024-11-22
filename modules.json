@@ -29,6 +29,11 @@
         "node": "./shared/SkAp.ts",
         "dependencies": ["SkAn"]
     },
+    "SkSa": {
+        "deno": "./shared/SkSa.ts",
+        "node": "./shared/SkSa.ts",
+        "dependencies": []
+    },
     "SkOp": {
         "deno": "./shared/SkOp.ts",
         "node": "./shared/SkOp.ts",
