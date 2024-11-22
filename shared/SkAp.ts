@@ -16,6 +16,7 @@ export namespace skap {
         SkapString<string> 
       | SkapNumber<string>
       | SkapBoolean<string>
+      | SkapPositional<number>
       | SkapSubcommand<SkapSubcommandShape>;
     function isSkapArgument(arg: SkapArgument): arg is SkapArgument {
         return arg instanceof SkapString || arg instanceof SkapNumber || arg instanceof SkapSubcommand;
@@ -36,6 +37,8 @@ export namespace skap {
         T extends SkapRequired<infer U extends SkapArgument>
       ? Require<SkapInferArgument<U>>
       : T extends SkapString<string> 
+      ? string | undefined 
+      : T extends SkapPositional<number> 
       ? string | undefined 
       : T extends SkapNumber<string>
       ? number | undefined
@@ -60,6 +63,9 @@ export namespace skap {
     }
     export function boolean<T extends string>(name: T): SkapBoolean<T> {
         return new SkapBoolean(name);
+    }
+    export function positional<T extends number>(index: T): SkapPositional<number> {
+        return new SkapPositional(index);
     }
     class SkapString<T extends string> {
         name: T;
@@ -115,6 +121,29 @@ export namespace skap {
             this.name = name;
             this.__description = description;
             this.__required = required;
+        }
+        description(description: string): this {
+            this.__description = description;
+            return this;
+        }
+    }
+    class SkapPositional<T extends number> {
+        name: T;
+        __description: string;
+        __required: boolean;
+        constructor(index: T, description: string = "", required: boolean = false) {
+            this.name = index;
+            this.__description = description;
+            this.__required = required;
+        }
+
+        required(): SkapRequired<this> {
+            this.__required = true;
+            return this as SkapRequired<this>;
+        }
+        optional(): SkapOptional<this> {
+            this.__required = false;
+            return this as SkapOptional<this>;
         }
         description(description: string): this {
             this.__description = description;
@@ -179,6 +208,8 @@ export namespace skap {
                     out[argName] = {selected: undefined, commands: commands};
                 } else if (this.shape[argName] instanceof SkapBoolean) {
                     out[argName] = false;
+                } else if (this.shape[argName] instanceof SkapPositional) {
+                    out[argName] = undefined;
                 }
             }
             return out;
@@ -219,6 +250,8 @@ export namespace skap {
                         if (arg == argShape.name) {
                             out[argName] = true;
                         }
+                    } else if (argShape instanceof SkapPositional) {
+                        out[argName] = args.shift()!;
                     }
                 }
             }
