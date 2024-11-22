@@ -1,5 +1,7 @@
+// deno-lint-ignore no-explicit-any
 type SkBuilt<I = any, O = any> = (...args: [I]) => O;
 
+// deno-lint-ignore no-explicit-any
 type Function<I extends any[], O> = (...args: I) => O;
 
 // exceptions due to no filling in generics for generic functions
@@ -7,11 +9,13 @@ type Function<I extends any[], O> = (...args: I) => O;
 // see issues: 
 //  * https://github.com/microsoft/TypeScript/issues/57102
 //  * https://github.com/microsoft/TypeScript/pull/47607
+// deno-lint-ignore no-explicit-any
 type Flatten<T extends any[][]> = T[number];
 type SkApplySingle<BaseType, F extends SkBuilt> = 
     F extends <T>(value: T) => T[]
       ? BaseType[]
     : F extends <T>(value: T[][]) => T[]
+      // deno-lint-ignore no-explicit-any
       ? BaseType extends any[][] ? Flatten<BaseType> : never
     : F extends <T>(value: T[]) => T
       ? BaseType
@@ -21,8 +25,10 @@ type SkApplySingle<BaseType, F extends SkBuilt> =
 type SkApply<BaseType, F extends SkBuilt[]> = 
     F extends [] 
     ? BaseType
+  // deno-lint-ignore no-explicit-any
     : F extends [(value: infer I) => any] 
       ? BaseType extends I ? SkApplySingle<BaseType, F[0]> : never
+  // deno-lint-ignore no-explicit-any
     : F extends [(value: infer I) => any, ...infer R extends SkBuilt[]] 
       ? BaseType extends I 
         ? SkApply<SkApplySingle<BaseType, F[0]>, R>
@@ -40,6 +46,7 @@ export function apply<T, F extends SkBuilt[]>(
     }
     return v as SkApply<T, F>;
 }
+// deno-lint-ignore no-explicit-any
 export const map = function <T extends any[], F extends SkBuilt[]>(...fns: F)
 
 {
@@ -65,8 +72,11 @@ export const ch = {
   },
   flatten: <T>(values: T[][]) => values.flat() as T[],
 
+  // deno-lint-ignore no-explicit-any
   all: (predicate: (value: any) => boolean) => (values: any[]) => values.every(predicate),
+  // deno-lint-ignore no-explicit-any
   any: (predicate: (value: any) => boolean) => (values: any[]) => values.some(predicate),
+  // deno-lint-ignore no-explicit-any
   none: (predicate: (value: any) => boolean) => (values: any[]) => values.every(value => !predicate(value)),
 
   sum: (values: number[]) => values.reduce((a, b) => a + b, 0),
