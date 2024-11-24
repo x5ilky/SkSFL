@@ -218,18 +218,23 @@ export namespace skap {
             // deno-lint-ignore no-explicit-any
             const out: any = this.emptyBase();
 
-            while (args.length > 0) {
+            const positional = Object.entries(this.shape).filter(([a, b]) => b instanceof SkapPositional).toSorted(([_n, a], [_, b]) => (a as SkapPositional<number>).name - (b as SkapPositional<number>).name);
+
+            while (args.length) {
                 const arg = args.shift();
+                let did = false;
                 for (const argName in this.shape) {
                     const argShape = this.shape[argName];
                     if (argShape instanceof SkapString) {
                         if (arg == argShape.name) {
                             out[argName] = args.shift();
+                            did = true;
                         }
                     } else if (argShape instanceof SkapNumber) {
                         if (arg == argShape.name) {
                             try {
                                 out[argName] = Number(args.shift());
+                                did = true;
                             } catch (e) {
                                 settings.customError!(`Invalid number argument ${argShape.name}`);
                             }
@@ -246,15 +251,25 @@ export namespace skap {
                                 break;
                             }
                         }
+                        did = true;
                     } else if (argShape instanceof SkapBoolean) {
                         if (arg == argShape.name) {
                             out[argName] = true;
+                            did = true;
                         }
-                    } else if (argShape instanceof SkapPositional) {
-                        out[argName] = args.shift()!;
+                    }
+                }
+                if (!did) {
+                    // check for positionals
+                    if (positional.length) {
+                        const [argName, _argShape] = positional.shift()!;
+                        out[argName] = args.shift();
+                    } else {
+                        settings.customError(`Too many arguments`)
                     }
                 }
             }
+            
 
             for (const argName in this.shape) {
                 const argShape = this.shape[argName];
@@ -272,6 +287,10 @@ export namespace skap {
                     }
                 } else if (argShape instanceof SkapBoolean) {
                     // pass
+                } else if (argShape instanceof SkapPositional) {
+                    if (out[argName] === undefined && argShape.__required) {
+                        settings.customError!(`Missing required positional argument for ${argName}\n${this.usage()}\n${this.usage()}`);
+                    }
                 }
             }
 
@@ -298,6 +317,8 @@ export namespace skap {
                     }
                 } else if (argShape instanceof SkapSubcommand) {
                     out += `${Ansi.reset}${Ansi.bold} <subcommand>`;
+                } else if (argShape instanceof SkapPositional) {
+                    out += `${Ansi.reset}${Ansi.italic} <${argName}>`
                 }
             }
             out += `${Ansi.reset}\n`;
