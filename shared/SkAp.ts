@@ -69,12 +69,15 @@ export namespace skap {
     }
     class SkapString<T extends string> {
         name: T;
+        __default: string | undefined;
         __description: string;
         __required: boolean;
         constructor(name: T, description: string = "", required: boolean = false) {
             this.name = name;
             this.__description = description;
             this.__required = required;
+
+            this.__default = undefined;
         }
 
         required(): SkapRequired<SkapString<T>> {
@@ -89,28 +92,38 @@ export namespace skap {
             this.__description = description;
             return this;
         }
+        default(value: string): SkapRequired<this> {
+            this.__default = value;
+            return  this as SkapRequired<this>;
+        }
     }
     class SkapNumber<T extends string> {
         name: T;
         __description: string;
+        __default: number | undefined;
         __required: boolean;
         constructor(name: T, description: string = "", required: boolean = false) {
             this.name = name;
             this.__description = description;
             this.__required = required;
+            this.__default = 0;
         }
 
         required(): SkapRequired<SkapNumber<T>> {
             this.__required = true;
             return this as SkapRequired<SkapNumber<T>>;
         }
-        optional(): SkapOptional<SkapNumber<T>> {
+        optional(): SkapOptional<this> {
             this.__required = false;
-            return this as SkapOptional<SkapNumber<T>>;
+            return this as SkapOptional<this>;
         }
         description(description: string): this {
             this.__description = description;
             return this;
+        }
+        default(value: number): SkapRequired<this> {
+            this.__default = value;
+            return this as SkapRequired<this>;
         }
     }
     class SkapBoolean<T extends string> {
@@ -196,9 +209,9 @@ export namespace skap {
             const out: any = {};
             for (const argName in this.shape) {
                 if (this.shape[argName] instanceof SkapString) {
-                    out[argName] = undefined;
+                    out[argName] = this.shape[argName].__default;
                 } else if (this.shape[argName] instanceof SkapNumber) {
-                    out[argName] = undefined;
+                    out[argName] = this.shape[argName].__default;
                 } else if (this.shape[argName] instanceof SkapSubcommand) {
                     // deno-lint-ignore no-explicit-any
                     const commands: any = {};

@@ -31,6 +31,10 @@ async function main() {
         const addModule = function (module: string) {
             if (modules.includes(module)) return;
             modules.splice(modules.findIndex(m => m === module), 0, module);
+            if (!(module in modulesIndex)) {
+                console.error(`[SkAm] error: no module called ${module}`);
+                Deno.exit(1);
+            }
             if (modulesIndex[module as keyof typeof modulesIndex].dependencies.length > 0) {
                 for (const dep of modulesIndex[module as keyof typeof modulesIndex].dependencies) {
                     console.log(`[SkAm] Adding dependency ${dep} due to module ${module}`);

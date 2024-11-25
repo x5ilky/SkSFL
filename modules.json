@@ -38,5 +38,10 @@
         "deno": "./shared/SkOp.ts",
         "node": "./shared/SkOp.ts",
         "dependencies": []
+    },
+    "SkCh": {
+        "deno": "./shared/SkCh.ts",
+        "node": "./shared/SkCh.ts",
+        "dependencies": []
     }
 }
