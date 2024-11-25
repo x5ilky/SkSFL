@@ -76,7 +76,7 @@ async function main() {
             if (module in modulesIndex) {
                 const file = modulesIndex[module as keyof typeof modulesIndex];
                 if (runtime in file) {
-                    out += (await Deno.readTextFile(path.join(import.meta.dirname!, "../", file[runtime]!))).replace(/\/\/\s+#begin_import.*\/\/\s+#end_import/gs, '');
+                    out += "\n" + (await Deno.readTextFile(path.join(import.meta.dirname!, "../", file[runtime]!))).replace(/\/\/\s+#begin_import.*\/\/\s+#end_import/gs, '') + "\n";
                 } else {
                     console.error(`[SkAm] Module ${module} not found for runtime ${runtime}`);
                 }
