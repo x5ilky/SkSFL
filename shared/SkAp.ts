@@ -337,6 +337,8 @@ export namespace skap {
                         out += `  ${Ansi.bold}${this.shape[arg].name}${Ansi.reset} <number>`;
                     } else if (this.shape[arg] instanceof SkapBoolean) {
                         out += `  ${Ansi.bold}${this.shape[arg].name}${Ansi.reset}`;
+                    } else if (this.shape[arg] instanceof SkapPositional) {
+                        out += `  ${Ansi.bold}<${arg}>${Ansi.reset}`
                     }
                     if (this.shape[arg].__required) {
                         out += `${Ansi.red} (required)`;
