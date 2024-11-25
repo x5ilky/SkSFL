@@ -48,4 +48,19 @@ export const Ansi = {
     // 24-bit
     rgb: (r: number, g: number, b: number) => `\x1b[38;2;${r};${g};${b}m`,
     bgRgb: (r: number, g: number, b: number) => `\x1b[48;2;${r};${g};${b}m`,
+    
+    rgbHex: (_hex: string) => "",
+    bgRgbHex: (_hex: string) => "",
+}
+
+Ansi.rgbHex = (hex: string) => Ansi.rgb(...hexToRgb(hex));
+Ansi.bgRgbHex = (hex: string) => Ansi.bgRgb(...hexToRgb(hex));
+
+function hexToRgb(hex: string) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)!;
+  return <const>[
+    parseInt(result[1], 16),
+    parseInt(result[2], 16),
+    parseInt(result[3], 16)
+  ]
 }
