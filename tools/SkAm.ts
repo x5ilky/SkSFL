@@ -59,7 +59,15 @@ async function main() {
         console.log(`[SkAm] Runtime: ${runtime}`);
         console.log(`[SkAm] Output File: ${output}`);
 
-        let out = '';
+        let out = `
+/**
+ * SkSFL amalgamate file
+ * GitHub: https://github.com/x5ilky/SkSFL
+ * Created: ${new Date().toTimeString()}
+ * Modules: ${modules.join(", ")}
+ * 
+ * Created without care by x5ilky
+ */`;
         for (const module of modules) {
             if (module in modulesIndex) {
                 const file = modulesIndex[module as keyof typeof modulesIndex];
