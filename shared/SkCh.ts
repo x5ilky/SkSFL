@@ -72,15 +72,16 @@ export const ch = {
   },
   flatten: <T>(values: T[][]) => values.flat() as T[],
 
-  // deno-lint-ignore no-explicit-any
-  all: (predicate: (value: any) => boolean) => (values: any[]) => values.every(predicate),
-  // deno-lint-ignore no-explicit-any
-  any: (predicate: (value: any) => boolean) => (values: any[]) => values.some(predicate),
-  // deno-lint-ignore no-explicit-any
-  none: (predicate: (value: any) => boolean) => (values: any[]) => values.every(value => !predicate(value)),
+  all: <T>(predicate: (value: T) => boolean) => (values: T[]) => values.every(predicate),
+  any: <T>(predicate: (value: T) => boolean) => (values: T[]) => values.some(predicate),
+  none: <T>(predicate: (value: T) => boolean) => (values: T[]) => values.every(value => !predicate(value)),
 
   sum: (values: number[]) => values.reduce((a, b) => a + b, 0),
 };
+
+export function currify<I, R extends unknown[], O>(fn: (one: I, ...rest: R) => O): (...rest: R) => (one: I) => O {
+  return (...rest) => one => fn(one, ...rest);
+}
 
 // const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 // const test = ch.repeat(2);
