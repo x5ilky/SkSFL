@@ -296,13 +296,13 @@ export namespace skap {
                     }
                 } else if (argShape instanceof SkapSubcommand) {
                     if (out[argName].selected === undefined && argShape.__required) {
-                        settings.customError!(`Missing required subcommand for ${argName}\n${this.usage()}\n${this.usage()}`);
+                        settings.customError!(`Missing required subcommand for ${argName}\n${this.usage()}`);
                     }
                 } else if (argShape instanceof SkapBoolean) {
                     // pass
                 } else if (argShape instanceof SkapPositional) {
                     if (out[argName] === undefined && argShape.__required) {
-                        settings.customError!(`Missing required positional argument for ${argName}\n${this.usage()}\n${this.usage()}`);
+                        settings.customError!(`Missing required positional argument for ${argName}\n${this.usage()}`);
                     }
                 }
             }
@@ -337,7 +337,7 @@ export namespace skap {
             out += `${Ansi.reset}\n`;
             return out;
         }
-        usage(previous: string = import.meta.filename ?? import.meta.url): string {
+        usage(previous: string = "program"): string {
             let out = previous + this.syntax();
             const args = Object.keys(this.shape).filter(a => isNotSkapSubcommand(this.shape[a]));
             if (args.length > 0) {
