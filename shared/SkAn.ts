@@ -51,6 +51,41 @@ export const Ansi = {
     
     rgbHex: (_hex: string) => "",
     bgRgbHex: (_hex: string) => "",
+
+    cursor: {
+        // Move the cursor up by n lines
+        moveUp: (n: number) => `\x1b[${n}A`,
+    
+        // Move the cursor down by n lines
+        moveDown: (n: number) => `\x1b[${n}B`,
+    
+        // Move the cursor forward by n columns
+        moveForward: (n: number) => `\x1b[${n}C`,
+    
+        // Move the cursor backward by n columns
+        moveBackward: (n: number) => `\x1b[${n}D`,
+    
+        // Move the cursor to a specific position (row, column)
+        moveTo: (row: number, col: number) => `\x1b[${row};${col}H`,
+    
+        // Save the current cursor position
+        savePosition: () => `\x1b[s`,
+    
+        // Restore the saved cursor position
+        restorePosition: () => `\x1b[u`,
+    
+        // Clear the screen and move the cursor to the top-left
+        clearScreen: () => `\x1b[2J`,
+    
+        // Clear the current line from the cursor to the end
+        clearLineToEnd: () => `\x1b[0K`,
+    
+        // Clear the current line from the cursor to the beginning
+        clearLineToStart: () => `\x1b[1K`,
+    
+        // Clear the entire current line
+        clearLine: () => `\x1b[2K`,
+    }
 }
 
 Ansi.rgbHex = (hex: string) => Ansi.rgb(...hexToRgb(hex));
