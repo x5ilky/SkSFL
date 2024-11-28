@@ -310,7 +310,7 @@ export namespace skap {
                         const [argName, _argShape] = positional.shift()!;
                         out[argName] = args.shift();
                     } else if (rest !== undefined) {
-                        out[rest[0]] = args.shift();
+                        out[rest[0]].push(arg);
                     }
                     else {
                         settings.customError(`Too many arguments\n${this.usage()}`)
