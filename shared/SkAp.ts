@@ -70,6 +70,9 @@ export namespace skap {
     export function positional<T extends number>(index: T): SkapPositional<number> {
         return new SkapPositional(index);
     }
+    export function rest(): SkapRest {
+        return new SkapRest();
+    }
     class SkapString<T extends string> {
         name: T;
         __default: string | undefined;
