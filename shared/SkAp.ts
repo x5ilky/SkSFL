@@ -17,6 +17,7 @@ export namespace skap {
       | SkapNumber<string>
       | SkapBoolean<string>
       | SkapPositional<number>
+      | SkapRest
       | SkapSubcommand<SkapSubcommandShape>;
     function isSkapArgument(arg: SkapArgument): arg is SkapArgument {
         return arg instanceof SkapString || arg instanceof SkapNumber || arg instanceof SkapSubcommand;
@@ -40,6 +41,8 @@ export namespace skap {
       ? string | undefined 
       : T extends SkapPositional<number> 
       ? string | undefined 
+      : T extends SkapRest
+      ? string[]
       : T extends SkapNumber<string>
       ? number | undefined
       : T extends SkapBoolean<string>
@@ -163,6 +166,19 @@ export namespace skap {
             return this;
         }
     }
+    class SkapRest {
+        __description: string;
+        __required: boolean;
+        constructor(description: string = "", required: boolean = false) {
+            this.__description = description;
+            this.__required = required;
+        }
+
+        description(description: string): this {
+            this.__description = description;
+            return this;
+        }
+    }
     class SkapSubcommand<T extends SkapSubcommandShape = SkapSubcommandShape> {
         shape: T;
         __description: string;
@@ -191,6 +207,7 @@ export namespace skap {
         }
         static check(shape: SkapCommandShape) {
             let subcs = 0;
+            let rest = 0;
             for (const argName in shape) {
                 if (shape[argName] instanceof SkapSubcommand) {
                     subcs++;
@@ -199,6 +216,15 @@ export namespace skap {
                     }
                     for (const subcommandName in shape[argName].shape) {
                         SkapCommand.check(shape[argName].shape[subcommandName].shape);
+                    }
+                }
+                if (shape[argName] instanceof SkapRest) {
+                    if (subcs) {
+                        throw new Error("SkAp: Cannot have subcommands and rest arguments due to confusion")
+                    }
+                    rest++;
+                    if (rest > 1) {
+                        throw new Error("SkAp: Only one rest argument is allowed")
                     }
                 }
             }
@@ -223,6 +249,8 @@ export namespace skap {
                     out[argName] = false;
                 } else if (this.shape[argName] instanceof SkapPositional) {
                     out[argName] = undefined;
+                } else if (this.shape[argName] instanceof SkapRest) {
+                    out[argName] = [];
                 }
             }
             return out;
@@ -232,6 +260,7 @@ export namespace skap {
             const out: any = this.emptyBase();
 
             const positional = Object.entries(this.shape).filter(([a, b]) => b instanceof SkapPositional).toSorted(([_n, a], [_, b]) => (a as SkapPositional<number>).name - (b as SkapPositional<number>).name);
+            const rest = Object.entries(this.shape).find(([b, a]) => a instanceof SkapRest);
 
             while (args.length) {
                 const arg = args.shift();
@@ -277,8 +306,11 @@ export namespace skap {
                     if (positional.length) {
                         const [argName, _argShape] = positional.shift()!;
                         out[argName] = args.shift();
-                    } else {
-                        settings.customError(`Too many arguments`)
+                    } else if (rest !== undefined) {
+                        out[rest[0]] = args.shift();
+                    }
+                    else {
+                        settings.customError(`Too many arguments\n${this.usage()}`)
                     }
                 }
             }
@@ -332,6 +364,8 @@ export namespace skap {
                     out += `${Ansi.reset}${Ansi.bold} <subcommand>`;
                 } else if (argShape instanceof SkapPositional) {
                     out += `${Ansi.reset}${Ansi.italic} <${argName}>`
+                } else if (argShape instanceof SkapRest) {
+                    out += `${Ansi.reset}${Ansi.underline} <...${argName}>`
                 }
             }
             out += `${Ansi.reset}\n`;
@@ -352,6 +386,8 @@ export namespace skap {
                         out += `  ${Ansi.bold}${this.shape[arg].name}${Ansi.reset}`;
                     } else if (this.shape[arg] instanceof SkapPositional) {
                         out += `  ${Ansi.bold}<${arg}>${Ansi.reset}`
+                    } else if (this.shape[arg] instanceof SkapRest) {
+                        out += `  ${Ansi.bold}<...${arg}>${Ansi.reset}`;
                     }
                     if (this.shape[arg].__required) {
                         out += `${Ansi.red} (required)`;
