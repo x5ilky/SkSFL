@@ -1,3 +1,4 @@
+// (S)ilk (T)ool (Am)algamate
 import modulesIndex from '../modules.json' with { type: 'json' };
 
 import * as path from 'jsr:@std/path';

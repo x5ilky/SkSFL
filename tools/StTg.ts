@@ -1,4 +1,4 @@
-// (S)il(k) (T)ype (G)enerator
+// (S)ilk (T)ool (T)ype (G)enerator
 /*
 --- Example Syntax ---
 
