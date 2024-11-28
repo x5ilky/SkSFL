@@ -12,7 +12,7 @@ writing typescript code.
 
 ## Amalgamate
 
-**SkAm** is a tool that amalgamates the multiple modules into a single file that
+**StAm** is a tool that amalgamates the multiple modules into a single file that
 you can paste into your project.
 
 To download the tool, run `git clone https://github.com/x5ilky/SkSFL`, and use the below command in the root directory of the repository.
@@ -46,5 +46,5 @@ deno run -A ./build/SkAm.ts build -m <modules> -r <runtime> -o <output file>
 
 | Tool   | Full Name                           | Description                  |
 | ------ | ----------------------------------- | ---------------------------- |
-| `SkAm` | **S**il**k** **Am**algamate         | Amalgamates modules together |
-| `SkTg` | **S**il**k** **T**ype **G**enerator | Generates types              |
+| `StAm` | **S**ilk **T**ool **Am**algamate         | Amalgamates modules together |
+| `StTg` | **S**ilk **T**ool **T**ype **G**enerator | Generates types              |
