@@ -4,7 +4,9 @@ import modulesIndex from '../modules.json' with { type: 'json' };
 import * as path from 'jsr:@std/path';
 
 import { skap } from "../shared/SkAp.ts";
-import { Logger } from "../shared/SkLg.ts"
+import { Logger } from "../shared/SkLg.ts";
+import { TSLexer } from "../shared/SkTs/Tk.ts";
+import { reconstructMinimize } from "../shared/SkTs/Rc.ts"
 
 const logger = new Logger({});
 
@@ -14,7 +16,9 @@ const shape = skap.command({
             modules: skap.rest(),
             runtime: skap.string("-r"),
             outFile: skap.string("-o"),
-            help: skap.boolean("--help")
+            help: skap.boolean("--help"),
+            minify: skap.boolean("-M"),
+            minifyRemoveComments: skap.boolean("-Mc")
         })
     }).required()
 })
@@ -62,16 +66,19 @@ async function main() {
         console.log(`[SkAm] Modules: ${modules.join(', ')}`);
         console.log(`[SkAm] Runtime: ${runtime}`);
         console.log(`[SkAm] Output File: ${output}`);
+        if (subc.minify) console.log(`[SkAm] Minification: true`);
 
-        let out = `
-/**
+        const START_COMMENT = 
+`/**
  * SkSFL amalgamate file
  * GitHub: https://github.com/x5ilky/SkSFL
  * Created: ${new Date().toTimeString()}
  * Modules: ${modules.join(", ")}
  * 
  * Created without care by x5ilky
- */`;
+ */
+`;
+        let out = "";
         for (const module of modules) {
             if (module in modulesIndex) {
                 const file = modulesIndex[module as keyof typeof modulesIndex];
@@ -86,7 +93,12 @@ async function main() {
         }
         
         console.log(`[SkAm] Writing to ${output}`);
-        await Deno.writeTextFile(output, out);
+
+        if (subc.minify) {
+            const lexer = new TSLexer(out);
+            out = reconstructMinimize(lexer.lex(), !subc.minifyRemoveComments)
+        }
+        await Deno.writeTextFile(output, START_COMMENT + out);
     }
 }
 

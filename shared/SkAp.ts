@@ -8,7 +8,7 @@ import { Ansi } from "./SkAn.ts";
 export namespace skap {
     type ParseSettings = {
         customError: (error: string) => void;
-    }
+    };
 
     type SkapRequired<T extends SkapArgument> = T & {__required: true};
     type SkapOptional<T extends SkapArgument> = (T extends SkapRequired<infer U> ? U : T) & {__required: false};

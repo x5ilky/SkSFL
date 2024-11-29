@@ -190,6 +190,7 @@ export class TSLexer {
             case `delete`:
             case `void`:
             case `in`:
+            case `of`:
             case `true`:
             case `false`:
             case `null`:
@@ -221,6 +222,7 @@ export class TSLexer {
             case `override`:
             case `from`:
             case `asserts`:
+            case `infer`:
             case `is`:
                 this.tokens.push(TsToken$Keyword(this.start, this.end, { name: buffer }));
                 break;
@@ -340,10 +342,10 @@ export class TSLexer {
         }
         let modifiers = "";
         let c;
-        if (/[a-z]/.test(this.peek()!))
         while (/[a-z]/.test(c = this.eat()!)) {
             modifiers += c;
         }
+        this.buffer.splice(0, 0, c);
         this.tokens.push(TsToken$Regexp(this.start, this.end, {modifiers, value: chars}))
     }
 
@@ -405,7 +407,7 @@ export class TSLexer {
             buffer += c;
         }
         this.tokens.push(
-            TsToken$Comment(this.start, this.end, { multiline: false, content: buffer }),
+            TsToken$Comment(this.start, this.end, { multiline: true, content: buffer }),
         );
     }
 
