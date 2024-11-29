@@ -52,9 +52,31 @@ export namespace skap {
         }, selected: keyof U} : never;
     type Require<T> = Exclude<T, undefined>;
 
+    /**
+     * Creates a SkapCommand instance: e.g.
+     * ```ts
+     * const shape = skap.command({
+     *     speed: skap.number().required(),
+     *     foo: skap.boolean()
+     * });
+     * ```
+     * @param shape Shape of the command, similar to zod
+     * @returns above
+     */
     export function command<T extends SkapCommandShape>(shape: T, description: string = ""): SkapCommand<T> {
         return new SkapCommand(shape, description);
     }
+    /**
+     * Creates a SkapSubcommand instance: e.g.
+     * ```ts
+     * skap.command({
+     *     subc: skap.subcommand({
+     *         build: skap.command({ ... })
+     *     })
+     * })
+     * @param shape Shape of subcommand
+     * @returns 
+     */
     export function subcommand<T extends SkapSubcommandShape>(shape: T, description: string = ""): SkapSubcommand<T> {
         return new SkapSubcommand(shape, description);
     }
@@ -67,9 +89,18 @@ export namespace skap {
     export function boolean<T extends string>(name: T): SkapBoolean<T> {
         return new SkapBoolean(name);
     }
+    /**
+     * 
+     * @param index Order of positional argument
+     * @returns SkapPositional instance
+     */
     export function positional<T extends number>(index: T): SkapPositional<number> {
         return new SkapPositional(index);
     }
+    /**
+     * Like {@link SkapPositional} except it gives all the unused positional arguments
+     * @returns SkapRest instance
+     */
     export function rest(): SkapRest {
         const r = new SkapRest();
         return r;
