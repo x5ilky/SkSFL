@@ -71,7 +71,8 @@ export namespace skap {
         return new SkapPositional(index);
     }
     export function rest(): SkapRest {
-        return new SkapRest();
+        const r = new SkapRest();
+        return r;
     }
     class SkapString<T extends string> {
         name: T;

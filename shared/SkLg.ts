@@ -68,7 +68,7 @@ export class Logger {
         this.printWithTags(
             [
                 ...(this.config.prefixTags ?? []),
-                this.config.levels![1]
+                this.config.levels![10]
             ],
             ...args
         )
@@ -88,7 +88,7 @@ export class Logger {
         this.printWithTags(
             [
                 ...(this.config.prefixTags ?? []),
-                this.config.levels![2]
+                this.config.levels![20]
             ],
             ...args
         )
@@ -98,7 +98,7 @@ export class Logger {
         this.printWithTags(
             [
                 ...(this.config.prefixTags ?? []),
-                this.config.levels![3]
+                this.config.levels![30]
             ],
             ...args
         )
