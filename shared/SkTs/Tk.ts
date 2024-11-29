@@ -1,18 +1,31 @@
 // (S)il(k) (T)ype(s)cript / (T)oke(n)iser
 
 //#begin_import
-import { TsToken, TsToken$Comment, TsToken$Decorator as _, TsToken$Identifier, TsToken$Keyword, TsToken$Number, TsToken$Regexp as __, TsToken$String, TsToken$Symbol, TsToken$TemplateString } from "./base.ts";
+import {
+    TsToken,
+    TsToken$Comment,
+    TsToken$Decorator as _,
+    TsToken$Identifier,
+    TsToken$Keyword,
+    TsToken$Number,
+    TsToken$Regexp as __,
+    TsToken$String,
+    TsToken$Symbol,
+    TsToken$TemplateString,
+    TsToken$Regexp,
+} from "./base.ts";
 //#end_import
-
 
 export class TSLexer {
     buffer: string[];
     start: number;
     end: number;
     tokens: TsToken[];
+    readonly original: string;
 
-    constructor(buffer: string) {
-        this.buffer = buffer.split("");
+    constructor(buffer: string, tokens?: string[]) {
+        this.buffer = tokens ?? buffer.split("");
+        this.original = buffer;
         this.start = 0;
         this.end = 0;
         this.tokens = [];
@@ -26,6 +39,15 @@ export class TSLexer {
         return this.tokens;
     }
 
+    errorAt(at: number, error: string) {
+        let ln = 0;
+        for (let i = 0; i < at; i++) if (this.original[i] === '\n') ln++;
+        
+        console.log(`at: ${this.original.split("\n")[ln]}`);
+        console.log(`${error}`);
+        throw new Error();
+    }
+
     private lexOne() {
         const char = this.eat()!;
         if (/\s/.test(char)) return;
@@ -35,81 +57,101 @@ export class TSLexer {
         } else if (/[a-zA-Z_\$]/.test(char)) {
             this.lexWord(char);
         } else if (char === '"' || char === "'") {
-            this.lexString(char, false)
-        }
-        else console.error("unknown char: " + JSON.stringify(char))
+            this.lexString(char, false);
+        } else if (char === "`") {
+            this.lexString(char, true);
+        } else this.errorAt(this.end, `unknown char at ${this.end}: ` + JSON.stringify(char));
     }
     private lexString(char: string, template: boolean) {
         let buffer = "";
         const inserts = [];
         while (true) {
             const c = this.eat();
-            if (c === undefined) throw new Error("string not ended");
+            if (c === undefined) this.errorAt(this.end, "string not ended");
             else if (c === char) break;
-            else if (c === '\\') {
-                const escape = this.eat();
-                if (escape === 'n') buffer += "\n";
-                else if (escape === 'r') buffer += "\r";
-                else if (escape === 't') buffer += "\t";
-                else if (escape === 'v') buffer += "\v";
-                else if (escape === 'f') buffer += "\f";
-                else if (escape === '\\') buffer += "\\";
-                else if (escape === '0') buffer += "\0";
-                else if (escape === 'c') {
-                    const code = this.eat();
-                    buffer += String.fromCharCode(code!.charCodeAt(0) % 32);
-                } else if (/[\^$\.*+?()[\]{}|\/]/.test(escape!)) {
-                    buffer += escape;
-                } else if (escape === 'x') {
-                    const char1 = this.eat()!;
-                    const char2 = this.eat()!;
-                    buffer += String.fromCharCode(parseInt(char1 + char2, 16));
-                } else if (escape === 'u') {
-                    const char1 = this.eat()!;
-                    if (char1 === '{') {
-                        let b = "";
-                        let c;
-                        while ((c = this.eat()) !== '}') {
-                            b += c;
-                        }
-                        buffer += String.fromCharCode(parseInt(b, 16));
-                    } else {
-                        const char2 = this.eat()!;
-                        const char3 = this.eat()!;
-                        const char4 = this.eat()!;
+            else if (c === "\\") {
+                buffer += this.getEscape();
+            } else { 
+                if (template) {
+                    if (c === "$") {
+                        if (this.peek() === "{") {
+                            // template
+                            this.eat();
 
-                        buffer += String.fromCharCode(parseInt(char1 + char2 + char3 + char4, 16));
-                    }
-                } else throw new Error(`Invalid escape: \\${escape}`) 
-            } else if (template) {
-                if (c === '$') {
-                    if (this.peek() === '{') {
-                        // template
-                        this.eat();
-
-                        const miniLexer = new TSLexer(this.buffer.join(""));
-                        miniLexer.end = this.end;
-                        miniLexer.start = this.start;
-                        let depth = 1;
-                        while (depth) {
-                            if (miniLexer.buffer.length === 0) throw new Error("string template not ended");
-                            if (miniLexer.peek() === '}') depth--;
-                            miniLexer.lexOne();
+                            const miniLexer = new TSLexer(this.original, this.buffer);
+                            miniLexer.end = this.end;
+                            miniLexer.start = this.start;
+                            let depth = 1;
+                            while (depth) {
+                                if (miniLexer.buffer.length === 0) {
+                                    this.errorAt(this.end, "string template not ended");
+                                }
+                                if (miniLexer.peek() === "}") depth--;
+                                if (depth === 0) {
+                                    miniLexer.eat();
+                                    break;
+                                }
+                                miniLexer.lexOne();
+                                miniLexer.start = miniLexer.end;
+                            }
+                            this.buffer = miniLexer.buffer;
+                            this.end = miniLexer.end;
+                            this.start = miniLexer.start;
+                            inserts.push({
+                                location: buffer.length,
+                                tokens: miniLexer.tokens,
+                            });
+                            continue;
                         }
-                        this.buffer = miniLexer.buffer;
-                        this.end = miniLexer.end;
-                        this.start = miniLexer.start;
-                        inserts.push({
-                            location: buffer.length,
-                            tokens: miniLexer.tokens
-                        });
                     }
-                }
-            } else buffer += c;
+                } 
+                buffer += c;
+            }
         }
-        
-        if (template) this.tokens.push(TsToken$TemplateString({ value: buffer, inserts }))
-        else          this.tokens.push(TsToken$String({ value: buffer }))
+
+        if (template) {
+            this.tokens.push(
+                TsToken$TemplateString(this.start, this.end, { value: buffer, inserts }),
+            );
+        } else this.tokens.push(TsToken$String(this.start, this.end, { value: buffer }));
+    }
+    private getEscape() {
+        const escape = this.eat();
+        if (escape === "n") return "\n";
+        else if (escape === "r") return "\r";
+        else if (escape === "t") return "\t";
+        else if (escape === "v") return "\v";
+        else if (escape === "f") return "\f";
+        else if (escape === "\\") return "\\";
+        else if (escape === "0") return "\0";
+        else if (escape === "c") {
+            const code = this.eat();
+            return String.fromCharCode(code!.charCodeAt(0) % 32);
+        } else if (/[\^$\.*+?()[\]{}|\/`]/.test(escape!)) {
+            return escape;
+        } else if (escape === "x") {
+            const char1 = this.eat()!;
+            const char2 = this.eat()!;
+            return String.fromCharCode(parseInt(char1 + char2, 16));
+        } else if (escape === "u") {
+            const char1 = this.eat()!;
+            if (char1 === "{") {
+                let b = "";
+                let c;
+                while ((c = this.eat()) !== "}") {
+                    b += c;
+                }
+                return String.fromCharCode(parseInt(b, 16));
+            } else {
+                const char2 = this.eat()!;
+                const char3 = this.eat()!;
+                const char4 = this.eat()!;
+
+                return String.fromCharCode(
+                    parseInt(char1 + char2 + char3 + char4, 16),
+                );
+            }
+        } else this.errorAt(this.end, `Invalid escape: \\${escape}`);
     }
     private lexWord(char: string) {
         let buffer = char;
@@ -180,46 +222,89 @@ export class TSLexer {
             case `from`:
             case `asserts`:
             case `is`:
-                this.tokens.push(TsToken$Keyword({ name: buffer }));
+                this.tokens.push(TsToken$Keyword(this.start, this.end, { name: buffer }));
                 break;
             default:
-                this.tokens.push(TsToken$Identifier({op: buffer}))
+                this.tokens.push(TsToken$Identifier(this.start, this.end, { op: buffer }));
                 break;
         }
-
     }
     private validOperator(s: string): boolean {
         switch (s) {
-            case '+': case '-': case '*': case '/': case '%': case '&': case '^': case '|': case '!': case '~': case '<': case '>': case '{': case '}': case '[': case ']': case '(': case ')': case '=': case '+=': case '-=': case '*=': case '/=': case '%=': case '&=': case '^=': case '|=': case '!=': case '~=': case '<=': case '>=': case '==': case '===': case '&&': case '||': case '&&=': case '||=': case '??': case '??=': case '?': case ':': case ',': case ';': case '.':
+            case "+":
+            case "-":
+            case "*":
+            case "/":
+            case "%":
+            case "&":
+            case "^":
+            case "|":
+            case "!":
+            case "~":
+            case "<":
+            case ">":
+            case "{":
+            case "}":
+            case "[":
+            case "]":
+            case "(":
+            case ")":
+            case "=":
+            case "+=":
+            case "-=":
+            case "*=":
+            case "/=":
+            case "%=":
+            case "&=":
+            case "^=":
+            case "|=":
+            case "!=":
+            case "~=":
+            case "<=":
+            case ">=":
+            case "==":
+            case "===":
+            case "&&":
+            case "||":
+            case "&&=":
+            case "||=":
+            case "??":
+            case "??=":
+            case "?":
+            case ":":
+            case ",":
+            case ";":
+            case ".":
                 return true;
             default:
                 return false;
         }
-    }        
+    }
 
     private lexNumber(char: string) {
-        if (char === '0') {
+        if (char === "0") {
             // check if hex or binary
-            if (this.peek() === 'b') {
+            if (this.peek() === "b") {
                 // binary
                 let buffer = "0b";
                 while (true) {
-                    if (this.peek() === "1" || this.peek() === "0") buffer += this.eat();
-                    else break;
+                    if (this.peek() === "1" || this.peek() === "0") {
+                        buffer += this.eat();
+                    } else break;
                 }
-                this.tokens.push(TsToken$Number({ num: buffer }))
+                this.tokens.push(TsToken$Number(this.start, this.end, { num: buffer }));
                 return;
-            } else if (this.peek() === 'x') {
+            } else if (this.peek() === "x") {
                 // binary
                 let buffer = "0x";
                 while (true) {
                     if (/[0-9a-fA-F]/.test(char)) buffer += this.eat();
                     else break;
                 }
-                this.tokens.push(TsToken$Number({ num: buffer }))
+                this.tokens.push(TsToken$Number(this.start, this.end, { num: buffer }));
                 return;
             }
-        } 
+        }
         let period = false;
         let e = false;
         let buffer = char.toString();
@@ -228,12 +313,11 @@ export class TSLexer {
             if (c === undefined) break;
             else if (/[0-9]/.test(c)) buffer += c;
             else if ("." === c) {
-                if (period) throw new Error("more than one period in a number");
+                if (period) this.errorAt(this.end, "more than one period in a number");
                 buffer += c;
                 period = true;
-            }
-            else if ("e" === c) {
-                if (e) throw new Error("more than one exponential in a number");
+            } else if ("e" === c) {
+                if (e) this.errorAt(this.end, "more than one exponential in a number");
                 e = true;
                 buffer += c;
             } else {
@@ -241,14 +325,45 @@ export class TSLexer {
             }
             this.eat();
         }
-        this.tokens.push(TsToken$Number({ num: buffer }))
-        
+        this.tokens.push(TsToken$Number(this.start, this.end, { num: buffer }));
+    }
+    private lexRegexp() {
+        let chars = "";
+        while (true) {
+            const c = this.eat();
+            if (c === undefined) this.errorAt(this.end, "no ended regexp");
+            if (c === '/') break;
+            if (c === '\\') {
+                chars += '\\';
+                chars += this.eat();
+            } else chars += c;
+        }
+        let modifiers = "";
+        let c;
+        if (/[a-z]/.test(this.peek()!))
+        while (/[a-z]/.test(c = this.eat()!)) {
+            modifiers += c;
+        }
+        this.tokens.push(TsToken$Regexp(this.start, this.end, {modifiers, value: chars}))
     }
 
     private lexSymbol(char: string) {
         let op = char;
-        if (char === '/' && this.peek() === '/') { this.eat(); return this.singleLineComment(); }
-        if (char === '/' && this.peek() === '*') { this.eat(); return this.multiLineComment(); }
+        if (char === "/" && this.peek() === "/") {
+            this.eat();
+            return this.singleLineComment();
+        }
+        if (char === "/" && this.peek() === "*") {
+            this.eat();
+            return this.multiLineComment();
+        }
+        if (char === "/" && !["Identifier", "Regexp", "String", "Number"].includes(this.tokens[this.tokens.length-1].__type)) {
+            if (this.peek() !== '=') {
+                // make sure it isnt operator
+                this.lexRegexp();
+                return;
+            }
+        }
         while (true) {
             if (this.peek() === undefined) {
                 break;
@@ -260,36 +375,39 @@ export class TSLexer {
             }
         }
         if (this.validOperator(op)) {
-            this.tokens.push(TsToken$Symbol({ op }));
+            this.tokens.push(TsToken$Symbol(this.start, this.end, { op }));
         } else {
-            throw new Error(`Invalid operator: ${op}`);
+            this.errorAt(this.end, `Invalid operator: ${op}`);
         }
     }
     private singleLineComment() {
         let buffer = "";
         let c;
-        while ((c = this.eat()) !== '\n') {
+        while ((c = this.eat()) !== "\n") {
             buffer += c;
         }
-        this.tokens.push(TsToken$Comment({ multiline: false, content: buffer }));
+        this.tokens.push(
+            TsToken$Comment(this.start, this.end, { multiline: false, content: buffer }),
+        );
     }
     private multiLineComment() {
         let buffer = "";
         let c;
         while (true) {
             c = this.eat();
-            if (c === '*') {
+            if (c === "*") {
                 // check if next line is /
-                if (this.peek() === '/') {
+                if (this.peek() === "/") {
                     this.eat();
                     break;
                 }
             }
             buffer += c;
         }
-        this.tokens.push(TsToken$Comment({ multiline: false, content: buffer }));
+        this.tokens.push(
+            TsToken$Comment(this.start, this.end, { multiline: false, content: buffer }),
+        );
     }
-
 
     private eat(): string | undefined {
         this.end++;

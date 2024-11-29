@@ -18,19 +18,20 @@ export function reconstructMinimize(tokens: TsToken[]) {
             Keyword: ({name}) => out += ` ${name} `,
             Number: ({num}) => out += num + " ",
             Regexp: ({modifiers, value}) => out += `/${value}/${modifiers} `,
-            String: ({value}) => out += `"${value}" `,
+            String: ({value}) => out += JSON.stringify(value),
             Symbol: ({op}) => out += op,
             TemplateString: ({inserts, value}) => {
                 let o = "";
                 for (let i = 0; i < value.length; i++) {
-                    const n = inserts.find(a => a.location === i);
+                    // "here: {}"
+                    //  01234567
+                    const n = inserts.find(a => i === a.location-1);
+                    o += value[i];
                     if (n !== undefined) {
-                        o += reconstructMinimize(n.tokens);
-                    } else {
-                        o += value[i];
+                        o += `\${${reconstructMinimize(n.tokens)}}`;
                     }
                 }
-                out += o;
+                out += "`" + o + "`";
             }
         })
     }
