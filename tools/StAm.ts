@@ -3,28 +3,32 @@ import modulesIndex from '../modules.json' with { type: 'json' };
 
 import * as path from 'jsr:@std/path';
 
-function usage() {
-    console.log('-- SkAm');
-    console.log('SUBCOMMANDS:');
-    console.log('  SkAm.ts build [options]');
-    console.log('    Builds the specified modules');
-    console.log('    Required options:');
-    console.log('      -m, --modules <modules>');
-    console.log('        The modules to build');
-    console.log('    Optional options:');
-    console.log('      -r, --runtime <runtime>');
-    console.log('        The runtime to build for');
-    console.log('        Valid values: deno, node');
-    console.log('      -o, --output <path>');
-    console.log('        The path to output the built modules');
-    Deno.exit(1);
-}
+import { skap } from "../shared/SkAp.ts";
+import { Logger } from "../shared/SkLg.ts"
 
-const args = Deno.args;
+const logger = new Logger({});
+
+const shape = skap.command({
+    subc: skap.subcommand({
+        build: skap.command({
+            modules: skap.rest(),
+            runtime: skap.string("-r"),
+            outFile: skap.string("-o"),
+            help: skap.boolean("--help")
+        })
+    }).required()
+})
+
+const cmd = shape.parse(Deno.args, {
+    customError: (message) => logger.error(message)
+});
 async function main() {
-    const subc = args[0];
-    if (!subc) usage();
-    if (subc === 'build') {
+    if (cmd.subc.selected === 'build') {
+        if (cmd.subc.commands.build!.help) {
+            console.log(shape.shape.subc.shape.build.usage());
+
+            Deno.exit(0);
+        }
         const modules: string[] = [];
         let runtime: "deno" | "node" = "deno";
         let output = "./SkOutput.ts";
@@ -44,22 +48,17 @@ async function main() {
             }
         }
 
-        while (args.length > 0) {
-            const arg = args.shift();
-            if (arg === '-m' || arg === '--modules') {
-                while (args.length > 0 && args[0][0] !== '-') {
-                    addModule(args.shift()!);
-                }
-            } else if (arg === '-r' || arg === '--runtime') {
-                if (runtime !== "deno" && runtime !== "node") {
-                    console.error(`[SkAm] Invalid runtime: ${runtime}`);
-                    usage();
-                }
-                runtime = args.shift()! as "deno" | "node";
-            } else if (arg === '-o' || arg === '--output') {
-                output = args.shift()!;
-            }
+        const subc = cmd.subc.commands.build!;
+        for (const module of subc.modules) {
+            addModule(module);
         }
+        if (subc.runtime !== undefined && subc.runtime !== "deno" && subc.runtime !== "node") {
+            console.error(`[SkAm] Invalid runtime: ${runtime}`);
+            console.error(shape.usage());
+            Deno.exit(1);
+        } else if (subc.runtime !== undefined) runtime = subc.runtime;
+        if (subc.outFile !== undefined) output = subc.outFile;
+        
         console.log(`[SkAm] Modules: ${modules.join(', ')}`);
         console.log(`[SkAm] Runtime: ${runtime}`);
         console.log(`[SkAm] Output File: ${output}`);
@@ -88,9 +87,6 @@ async function main() {
         
         console.log(`[SkAm] Writing to ${output}`);
         await Deno.writeTextFile(output, out);
-    } else {
-        console.log(`[SkAm] Unknown subcommand: ${subc}`);
-        usage();
     }
 }
 
