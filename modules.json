@@ -43,5 +43,10 @@
         "deno": "./shared/SkCh.ts",
         "node": "./shared/SkCh.ts",
         "dependencies": []
+    },
+    "SkTsTk": {
+        "deno": "./shared/SkTsTk.ts",
+        "node": "./shared/SkTsTk.ts",
+        "dependencies": []
     }
 }

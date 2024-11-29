@@ -1,0 +1,9 @@
+renum TsToken do
+    Symbol ${ op: string }$
+    Identifier ${ op: string }$
+    Decorator ${ op: string }$
+    String ${ value: string }$
+    Number ${ num: string }$
+    Keyword ${ name: string }$
+    Regexp ${ value: string, modifiers: string }$
+end

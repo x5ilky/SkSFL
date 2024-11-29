@@ -47,7 +47,7 @@ const cmd = shape.parse(Deno.args, {
     }
 });
 
-const renumRegex = /renum\s+(\w+)(<?([\w\s,]+?)>?)\s+do(.*?)end/gms;
+const renumRegex = /renum\s+(\w+)(<([\w\s,]+?)>)?\s+do(.*?)end/gms;
 const renumInner = /(\w+)\s+\${(.*?)}\$/gms;
 
 if (cmd.subc.selected === "build") {
@@ -71,13 +71,14 @@ ${exp}function match<T extends {__type: string, value: any}>(value: T, matchFor:
     const input = await Deno.readTextFile(inputFile);
 
     for (const renumMatch of input.matchAll(renumRegex)) {
-        const [
+        let [
             _total,
             name,
             genericTotal,
             _generics,
             body
         ] = renumMatch;
+        if (genericTotal === undefined) genericTotal = "";
 
         let totalType = `${exp}type ${name}${genericTotal} = `;
         const types = [];
