@@ -3,7 +3,9 @@ renum TsToken do
     Identifier ${ op: string }$
     Decorator ${ op: string }$
     String ${ value: string }$
+    TemplateString ${ value: string, inserts: { location: number, tokens: TsToken[] }[] }$
     Number ${ num: string }$
     Keyword ${ name: string }$
     Regexp ${ value: string, modifiers: string }$
+    Comment ${ multiline: boolean, content: string }$
 end

@@ -1,2 +1,4 @@
 /node/node_modules/
 /build/SkOutput.ts
+
+test.ts

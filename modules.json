@@ -44,9 +44,19 @@
         "node": "./shared/SkCh.ts",
         "dependencies": []
     },
-    "SkTsTk": {
-        "deno": "./shared/SkTsTk.ts",
-        "node": "./shared/SkTsTk.ts",
+    "SkTs/Tk": {
+        "deno": "./shared/SkTs/Tk.ts",
+        "node": "./shared/SkTs/Tk.ts",
+        "dependencies": ["SkTs/base"]
+    },
+    "SkTs/Rc": {
+        "deno": "./shared/SkTs/Rc.ts",
+        "node": "./shared/SkTs/Rc.ts",
+        "dependencies": ["SkTs/base"]
+    },
+    "SkTs/base": {
+        "deno": "./shared/SkTs/base.ts",
+        "node": "./shared/SkTs/base.ts",
         "dependencies": []
     }
 }
