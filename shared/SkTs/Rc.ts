@@ -1,9 +1,9 @@
 
 // (S)il(k) (T)ype(s)cript / (R)e(c)onstructor
 
-//#begin_import
+// #begin_import
 import { match, TsToken } from "./base.ts";
-//#end_import
+// #end_import
 
 export function reconstructMinimize(tokens: TsToken[]) {
     let out = "";

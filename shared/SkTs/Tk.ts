@@ -1,6 +1,6 @@
 // (S)il(k) (T)ype(s)cript / (T)oke(n)iser
 
-//#begin_import
+// #begin_import
 import {
     TsToken,
     TsToken$Comment,
@@ -14,7 +14,7 @@ import {
     TsToken$TemplateString,
     TsToken$Regexp,
 } from "./base.ts";
-//#end_import
+// #end_import
 
 export class TSLexer {
     buffer: string[];
