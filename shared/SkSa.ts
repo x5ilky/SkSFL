@@ -25,7 +25,7 @@ export namespace ssa {
         const bottom = Math.ceil(pad/2);
         const mw = maxWidth(str);
 
-        return repeat(top, repeat(mw, " ") + "\n") + str.split("\n").map(a => centerHorizontal(mw, a)).join("\n") + repeat(bottom, repeat(mw, " ") + "\n")
+        return repeat(top, repeat(mw, " ") + "\n") + str.split("\n").map(a => centerHorizontal(mw, a)).join("\n") + "\n" + repeat(bottom, repeat(mw, " ") + "\n")
     }
 
     // fn combine_lines(texts: Vec<String>) -> String {
