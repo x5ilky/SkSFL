@@ -1,7 +1,7 @@
 // (S)il(k) (A)rgument (P)arser
 
 // #begin_import
-import { Ansi } from "./SkAn.ts";
+import { Ansi } from "./SkTm/An.ts";
 // #end_import
 
 // deno-lint-ignore no-namespace

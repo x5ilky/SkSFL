@@ -1,5 +1,5 @@
 // #begin_import
-import { Ansi } from "./SkAn.ts";
+import { Ansi } from "./SkTm/An.ts";
 // #end_import
 
 
@@ -109,6 +109,7 @@ export class Logger {
         )
     }
 
+    // deno-lint-ignore no-explicit-any
     log(level: number, ...args: any[]) {
         this.printWithTags(
             [
