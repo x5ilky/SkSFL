@@ -20,8 +20,15 @@
         "dependencies": ["SkAn"]
     },
     "SkAn": {
-        "deno": "./shared/SkAn.ts",
-        "node": "./shared/SkAn.ts",
+        "deno": "./shared/SkTm/An.ts",
+        "node": "./shared/SkTm/An.ts",
+        "dependencies": [],
+        "deprecated": true,
+        "deprecatedUseInstead": "SkTm/An"
+    },
+    "SkTm/An": {
+        "deno": "./shared/SkTm/An.ts",
+        "node": "./shared/SkTm/An.ts",
         "dependencies": []
     },
     "SkAp": {
