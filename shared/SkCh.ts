@@ -77,23 +77,12 @@ export const ch = {
   none: <T>(predicate: (value: T) => boolean) => (values: T[]) => values.every(value => !predicate(value)),
 
   sum: (values: number[]) => values.reduce((a, b) => a + b, 0),
+  log: <T>(values: T) => { console.log(values); return values; },
+  sortAsc: (values: number[]) => values.toSorted((a, b) => a - b),
+  sortDsc: (values: number[]) => values.toSorted((a, b) => b - a),
+  sortCustom: <T>(sortFn: (a: T, b: T) => number) => (values: T[]) => values.toSorted(sortFn),
 };
 
 export function currify<I, R extends unknown[], O>(fn: (one: I, ...rest: R) => O): (...rest: R) => (one: I) => O {
   return (...rest) => one => fn(one, ...rest);
 }
-
-// const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-// const test = ch.repeat(2);
-// const transform = apply(
-//   nums,
-//   ch.repeat(2),
-//   ch.flatten,
-// )
-// const transform2 = apply(
-//   transform,
-//   map(ch.add(5), ch.mul(2), ch.toString),
-//   ch.rev,
-//   ch.join(", ")
-// )
-// console.log(transform)
