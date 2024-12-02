@@ -39,7 +39,7 @@ import fs from 'fs/promises';
 import rd from 'readline';
 
 // #begin_import
-import { SkOption } from "../shared/SkOp.ts";
+import { SkResult } from "../shared/SkOp.ts";
 import { Logger, LogLevel } from "../shared/SkLg.ts";
 // #end_import
 
@@ -60,7 +60,7 @@ const question = (prompt: string): Promise<string> => {
 interface SilkDCConfig {
   token: string;
   commandsDir: string;
-  http_proxy: SkOption<string>;
+  http_proxy: SkResult<string>;
   cooldownIgnore: string[];
 }
 
@@ -288,8 +288,8 @@ export interface SilkDCCommand<T> {
     instance: SilkDC<T>
   ) => Promise<void>;
   description: string;
-  options: SkOption<SlashCommandBuilder>;
-  subOptions: SkOption<SlashCommandSubcommandBuilder>;
+  options: SkResult<SlashCommandBuilder>;
+  subOptions: SkResult<SlashCommandSubcommandBuilder>;
   cooldown?: number;
   autocomplete?: (Interaction: AutocompleteInteraction) => Promise<void>;
 }

@@ -56,7 +56,8 @@ export class Logger {
         ) + this.config.tagPrefix!.length + this.config.tagSuffix!.length;
     }
 
-    printWithTags(tags: LoggerTag[], ...args: string[]) {
+    // deno-lint-ignore no-explicit-any
+    printWithTags(tags: LoggerTag[], ...args: any[]) {
         const tag = (a: LoggerTag) => {
             const raw = `${this.config.tagPrefix}${a.name}${this.config.tagSuffix}`.padEnd(this.maxTagLength, " ");
             return `${Ansi.rgb(a.color[0], a.color[1], a.color[2])}${raw}${Ansi.reset}`;
@@ -64,7 +65,8 @@ export class Logger {
         console.log(`${tags.map((a) => tag(a).padStart(this.maxTagLength, "#")).join(' ')} ${args.join(' ')}`);
     }
 
-    info(...args: string[]) {
+    // deno-lint-ignore no-explicit-any
+    info(...args: any[]) {
         this.printWithTags(
             [
                 ...(this.config.prefixTags ?? []),
@@ -74,7 +76,8 @@ export class Logger {
         )
     }
 
-    debug(...args: string[]) {
+    // deno-lint-ignore no-explicit-any
+    debug(...args: any[]) {
         this.printWithTags(
             [
                 ...(this.config.prefixTags ?? []),
@@ -84,7 +87,8 @@ export class Logger {
         )
     }
 
-    warn(...args: string[]) {
+    // deno-lint-ignore no-explicit-any
+    warn(...args: any[]) {
         this.printWithTags(
             [
                 ...(this.config.prefixTags ?? []),
@@ -94,7 +98,8 @@ export class Logger {
         )
     }
 
-    error(...args: string[]) {
+    // deno-lint-ignore no-explicit-any
+    error(...args: any[]) {
         this.printWithTags(
             [
                 ...(this.config.prefixTags ?? []),
@@ -104,7 +109,7 @@ export class Logger {
         )
     }
 
-    log(level: number, ...args: string[]) {
+    log(level: number, ...args: any[]) {
         this.printWithTags(
             [
                 ...(this.config.prefixTags ?? []),

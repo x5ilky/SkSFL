@@ -155,7 +155,7 @@ export class TSLexer {
     }
     private lexWord(char: string) {
         let buffer = char;
-        while (/[a-zA-Z_$]/.test(this.peek() ?? "")) buffer += this.eat();
+        while (/[a-zA-Z_$0-9]/.test(this.peek() ?? "")) buffer += this.eat();
 
         switch (buffer) {
             case `if`:
@@ -385,7 +385,7 @@ export class TSLexer {
     private singleLineComment() {
         let buffer = "";
         let c;
-        while ((c = this.eat()) !== "\n") {
+        while ((c = this.eat()) !== "\n" && c !== undefined) {
             buffer += c;
         }
         this.tokens.push(

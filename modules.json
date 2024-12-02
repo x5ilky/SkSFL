@@ -49,6 +49,11 @@
         "node": "./shared/SkTs/Tk.ts",
         "dependencies": ["SkTs/base"]
     },
+    "SkTs/all": {
+        "deno": "./shared/_.ts",
+        "node": "./shared/_.ts",
+        "dependencies": ["SkTs/base", "SkTs/Tk", "SkTs/Rc"]
+    },
     "SkTs/Rc": {
         "deno": "./shared/SkTs/Rc.ts",
         "node": "./shared/SkTs/Rc.ts",
