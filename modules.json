@@ -70,5 +70,10 @@
         "deno": "./shared/SkTs/base.ts",
         "node": "./shared/SkTs/base.ts",
         "dependencies": []
+    },
+    "SkTm/Dm": {
+        "deno": "./shared/SkTm/Dm.ts",
+        "node": null,
+        "dependencies": ["SkTm/An", "SkOp"]
     }
 }

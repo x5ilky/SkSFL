@@ -1,6 +1,7 @@
 // (S)il(k) (T)er(m)inal / DM
 
 // #begin_import
+import { None, Some, type SkOption } from "../SkOp.ts";
 import { Ansi } from "./An.ts"
 // #end_import
 
@@ -61,7 +62,6 @@ export class Cell {
         return this.bg === other.bg && this.fg === other.fg && this.styles === other.styles;
     }
 }
-
 export class Buffer {
     width: number;
     height: number;
@@ -144,23 +144,59 @@ export class ManualWindow extends Window {
         this.buffer.cells[y][x] = cell;
     }
 }
+class AnsiUtil {
+    static async stdoutWrite(str: string) {
+        await Deno.stdout.write(new TextEncoder().encode(str));
+    }
+    static setRaw() {
+        Deno.stdin.setRaw(true, { cbreak: true });
+    }
+
+    static async getCursorPosition(): Promise<SkOption<[number, number]>> {
+        const buffer = new Uint8Array(1024);
+        await AnsiUtil.stdoutWrite("\x1b[6n");
+        const n = await Deno.stdin.read(buffer);
+
+        if (n === null)
+            return None();
+        else {
+            const result = new TextDecoder().decode(buffer.subarray(0, n));
+            const mid = result.slice(2, -1).split(";");
+            return Some([parseInt(mid[0]), parseInt(mid[1])]);
+        }
+    }
+}
+
+export class InputManager {
+    static __singleton: InputManager;
+    listeners: ((s: string) => void)[];
+
+    constructor() {
+        this.listeners = [];
+        this.queueItUp();
+    }
+    static getInstance() {
+        if (InputManager?.__singleton !== undefined) {
+            return InputManager.__singleton;
+        } else return this.__singleton = new InputManager();
+    }
+    async queueItUp() {
+        for await (const v of Deno.stdin.readable) {
+            const s = new TextDecoder().decode(v);
+            this.listeners.forEach(a => {
+                a(s);
+            });
+        }
+    }
+}
+const timeout = (ms: number) => new Promise<void>(res => setTimeout(() => res(), ms))
 
 if (import.meta.main) {
-    const w = new ManualWindow(80, 20);
-
-    let i = 0;
-    let prevTime = performance.now();
+    AnsiUtil.setRaw();
+    const im = InputManager.getInstance();
+    im.listeners.push(v => console.log(v));
     while (true) {
-        const dt = performance.now() - prevTime;
-        prevTime = performance.now();
-        console.log(`\x1b[H${w.render()}\x1b[H`)
-        const fps = (1000 / dt).toFixed(2) + "FPS";
-        for (let k = 0; k < fps.length; k++) {
-            const element = fps[k];
-            w.placeChar(k, 0, new Cell(element, new Color(0, 0, 0), new Color(255, 255, 255), CellStyling.None));
-        }
-
-        
-        i++;
+        await timeout(1000);
+        console.log("second");
     }
 }

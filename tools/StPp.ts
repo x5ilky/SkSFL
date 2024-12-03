@@ -90,9 +90,9 @@ function preprocess(tokens: TsToken[]): TsToken[] {
             }
             else if ("if" in parsed) {
                 const { value } = parsed["if"];
-                console.log(`Transcepting`)
+                console.log(`Transcepting`);
                 const v = reconstructMinimize(transcept(value), true);
-                console.log(`Interpreting: ${v}`)
+                console.log(`Interpreting: ${v}`);
                 const accept = eval(v); 
                 ifStack.push(accept);
             }
