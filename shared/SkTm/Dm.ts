@@ -149,7 +149,7 @@ class AnsiUtil {
         await Deno.stdout.write(new TextEncoder().encode(str));
     }
     static setRaw() {
-        Deno.stdin.setRaw(true, { cbreak: true });
+        Deno.stdin.setRaw(true);
     }
 
     static async getCursorPosition(): Promise<SkOption<[number, number]>> {
@@ -194,7 +194,10 @@ const timeout = (ms: number) => new Promise<void>(res => setTimeout(() => res(),
 if (import.meta.main) {
     AnsiUtil.setRaw();
     const im = InputManager.getInstance();
-    im.listeners.push(v => console.log(v));
+    im.listeners.push(v => console.log(JSON.stringify(v)));
+    im.listeners.push(v => {
+        if (v === "q") Deno.exit(0);
+    })
     while (true) {
         await timeout(1000);
         console.log("second");
