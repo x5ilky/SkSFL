@@ -340,7 +340,7 @@ export namespace skap {
                     // check for positionals
                     if (positional.length) {
                         const [argName, _argShape] = positional.shift()!;
-                        out[argName] = args.shift();
+                        out[argName] = arg;
                     } else if (rest !== undefined) {
                         out[rest[0]].push(arg);
                     }
