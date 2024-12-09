@@ -73,7 +73,7 @@ export class Logger {
                 this.config.levels![10]
             ],
             ...args
-        )
+        );
     }
 
     // deno-lint-ignore no-explicit-any
@@ -84,7 +84,7 @@ export class Logger {
                 this.config.levels![0]
             ],
             ...args
-        )
+        );
     }
 
     // deno-lint-ignore no-explicit-any
@@ -95,7 +95,7 @@ export class Logger {
                 this.config.levels![20]
             ],
             ...args
-        )
+        );
     }
 
     // deno-lint-ignore no-explicit-any
@@ -106,7 +106,7 @@ export class Logger {
                 this.config.levels![30]
             ],
             ...args
-        )
+        );
     }
 
     // deno-lint-ignore no-explicit-any
@@ -117,7 +117,7 @@ export class Logger {
                 this.config.levels![level]
             ],
             ...args
-        )
+        );
     }
 
     start(level: number, ...args: string[]) {
@@ -128,7 +128,7 @@ export class Logger {
                 this.config.startTag!
             ],
             ...args
-        )
+        );
     }
     end(level: number, ...args: string[]) {
         this.printWithTags(
@@ -138,7 +138,7 @@ export class Logger {
                 this.config.endTag!
             ],
             ...args
-        )
+        );
     }
 }
 
@@ -147,4 +147,4 @@ export const LogLevel = {
     INFO: 10,
     WARN: 20,
     ERROR: 30
-}
+};
