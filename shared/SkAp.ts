@@ -449,5 +449,10 @@ export namespace skap {
             }
             return out;
         }
+
+        description(description: string): this {
+            this.__description = description;
+            return this;
+        }
     }
 }
