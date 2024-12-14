@@ -19,10 +19,8 @@ export namespace skap {
       | SkapBoolean<string>
       | SkapPositional<number>
       | SkapRest
+      | SkapKV
       | SkapSubcommand<SkapSubcommandShape>;
-    function isSkapArgument(arg: SkapArgument): arg is SkapArgument {
-        return arg instanceof SkapString || arg instanceof SkapNumber || arg instanceof SkapSubcommand;
-    }
     function isNotSkapSubcommand<T extends SkapArgument>(arg: T): arg is Exclude<T, SkapSubcommand<SkapSubcommandShape>> {
         return !(arg instanceof SkapSubcommand);
     }
@@ -40,6 +38,8 @@ export namespace skap {
       ? (SkapInferArgument<U>)[]
       : T extends SkapRequired<infer U extends SkapArgument>
       ? Require<SkapInferArgument<U>>
+      : T extends SkapKV
+      ? { key: string, value: string } | undefined
       : T extends SkapString<string> 
       ? string | undefined 
       : T extends SkapPositional<number> 
@@ -85,6 +85,9 @@ export namespace skap {
     }
     export function string<T extends string>(name: T): SkapString<T> {
         return new SkapString(name);
+    }
+    export function kv(initial: string): SkapKV {
+        return new SkapKV(initial);
     }
     export function number<T extends string>(name: T): SkapNumber<T> {
         return new SkapNumber(name);
@@ -136,6 +139,42 @@ export namespace skap {
             return this;
         }
         default(value: string): SkapRequired<this> {
+            this.__default = value;
+            return  this as SkapRequired<this>;
+        }
+        multi(): SkapMulti<this> {
+            this.__multi = true;
+            return this as SkapMulti<this>;
+        }
+    }
+    class SkapKV {
+        name: string;
+        __default: {key: string, value: string} | undefined;
+        __description: string;
+        __required: boolean;
+        __multi: boolean;
+        constructor(initial: string, description: string = "", required: boolean = false) {
+            this.name = initial;
+            this.__description = description;
+            this.__required = required;
+            this.__multi = false;
+
+            this.__default = undefined;
+        }
+
+        required(): SkapRequired<this> {
+            this.__required = true;
+            return this as SkapRequired<this>;
+        }
+        optional(): SkapOptional<this> {
+            this.__required = false;
+            return this as SkapOptional<this>;
+        }
+        description(description: string): this {
+            this.__description = description;
+            return this;
+        }
+        default(value: {key: string, value: string}): SkapRequired<this> {
             this.__default = value;
             return  this as SkapRequired<this>;
         }
@@ -284,24 +323,28 @@ export namespace skap {
             // deno-lint-ignore no-explicit-any
             const out: any = {};
             for (const argName in this.shape) {
-                if (this.shape[argName] instanceof SkapString) {
-                    if (this.shape[argName].__multi) out[argName] = [];
-                    else out[argName] = this.shape[argName].__default;
-                } else if (this.shape[argName] instanceof SkapNumber) {
-                    if (this.shape[argName].__multi) out[argName] = [];
-                    else out[argName] = this.shape[argName].__default;
-                } else if (this.shape[argName] instanceof SkapSubcommand) {
+                const argShape = this.shape[argName];
+                if (argShape instanceof SkapString) {
+                    if (argShape.__multi) out[argName] = [];
+                    else out[argName] = argShape.__default;
+                } else if (argShape instanceof SkapKV) {
+                    if (argShape.__multi) out[argName] = [];
+                    else out[argName] = argShape.__default;
+                } else if (argShape instanceof SkapNumber) {
+                    if (argShape.__multi) out[argName] = [];
+                    else out[argName] = argShape.__default;
+                } else if (argShape instanceof SkapSubcommand) {
                     // deno-lint-ignore no-explicit-any
                     const commands: any = {};
-                    for (const subcommandName in this.shape[argName].shape) {
-                        commands[subcommandName] = this.shape[argName].shape[subcommandName].emptyBase();
+                    for (const subcommandName in argShape.shape) {
+                        commands[subcommandName] = argShape.shape[subcommandName].emptyBase();
                     }
                     out[argName] = {selected: undefined, commands: commands};
-                } else if (this.shape[argName] instanceof SkapBoolean) {
+                } else if (argShape instanceof SkapBoolean) {
                     out[argName] = false;
-                } else if (this.shape[argName] instanceof SkapPositional) {
+                } else if (argShape instanceof SkapPositional) {
                     out[argName] = undefined;
-                } else if (this.shape[argName] instanceof SkapRest) {
+                } else if (argShape instanceof SkapRest) {
                     out[argName] = [];
                 }
             }
@@ -353,6 +396,13 @@ export namespace skap {
                             out[argName] = true;
                             did = true;
                         }
+                    } else if (argShape instanceof SkapKV) {
+                        if (arg?.startsWith(argShape.name)) {
+                            const [key, value] = arg.slice(argShape.name.length).split("=", 2);
+                            if (argShape.__multi) out[argName].push({key, value});
+                            else out[argName] = {key, value};
+                            did = true;
+                        }
                     }
                 }
                 if (!did) {
@@ -389,6 +439,10 @@ export namespace skap {
                 } else if (argShape instanceof SkapPositional) {
                     if (out[argName] === undefined && argShape.__required) {
                         settings.customError!(`Missing required positional argument for ${argName}\n${this.usage()}`);
+                    }
+                } else if (argShape instanceof SkapKV) {
+                    if (out[argName] === undefined && argShape.__required) {
+                        settings.customError!(`Missing required key-value argument for ${argName}\n${this.usage()}`);
                     }
                 }
             }
@@ -434,6 +488,8 @@ export namespace skap {
                     out += `${Ansi.reset}`;
                     if (this.shape[arg] instanceof SkapString) {
                         out += `  ${Ansi.bold}${this.shape[arg].name}${Ansi.reset} <string>`;
+                    } else if (this.shape[arg] instanceof SkapKV) {
+                        out += `  ${Ansi.bold}${this.shape[arg].name}${Ansi.reset}<key>=<value>`;
                     } else if (this.shape[arg] instanceof SkapNumber) {
                         out += `  ${Ansi.bold}${this.shape[arg].name}${Ansi.reset} <number>`;
                     } else if (this.shape[arg] instanceof SkapBoolean) {
