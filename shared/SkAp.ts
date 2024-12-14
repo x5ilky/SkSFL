@@ -11,6 +11,7 @@ export namespace skap {
     };
 
     type SkapRequired<T extends SkapArgument> = T & {__required: true};
+    type SkapMulti<T extends SkapArgument>  = T & {__multi: true};
     type SkapOptional<T extends SkapArgument> = (T extends SkapRequired<infer U> ? U : T) & {__required: false};
     type SkapArgument = 
         SkapString<string> 
@@ -35,7 +36,9 @@ export namespace skap {
           : never
     };
     type SkapInferArgument<T extends SkapArgument> = 
-        T extends SkapRequired<infer U extends SkapArgument>
+        T extends SkapMulti<infer U extends SkapArgument>
+      ? (SkapInferArgument<U>)[]
+      : T extends SkapRequired<infer U extends SkapArgument>
       ? Require<SkapInferArgument<U>>
       : T extends SkapString<string> 
       ? string | undefined 
@@ -110,10 +113,12 @@ export namespace skap {
         __default: string | undefined;
         __description: string;
         __required: boolean;
+        __multi: boolean;
         constructor(name: T, description: string = "", required: boolean = false) {
             this.name = name;
             this.__description = description;
             this.__required = required;
+            this.__multi = false;
 
             this.__default = undefined;
         }
@@ -134,17 +139,23 @@ export namespace skap {
             this.__default = value;
             return  this as SkapRequired<this>;
         }
+        multi(): SkapMulti<this> {
+            this.__multi = true;
+            return this as SkapMulti<this>;
+        }
     }
     class SkapNumber<T extends string> {
         name: T;
         __description: string;
         __default: number | undefined;
         __required: boolean;
+        __multi: boolean;
         constructor(name: T, description: string = "", required: boolean = false) {
             this.name = name;
             this.__description = description;
             this.__required = required;
             this.__default = 0;
+            this.__multi = false;
         }
 
         required(): SkapRequired<SkapNumber<T>> {
@@ -162,6 +173,10 @@ export namespace skap {
         default(value: number): SkapRequired<this> {
             this.__default = value;
             return this as SkapRequired<this>;
+        }
+        multi(): SkapMulti<this> {
+            this.__multi = true;
+            return this as SkapMulti<this>;
         }
     }
     class SkapBoolean<T extends string> {
@@ -270,9 +285,11 @@ export namespace skap {
             const out: any = {};
             for (const argName in this.shape) {
                 if (this.shape[argName] instanceof SkapString) {
-                    out[argName] = this.shape[argName].__default;
+                    if (this.shape[argName].__multi) out[argName] = [];
+                    else out[argName] = this.shape[argName].__default;
                 } else if (this.shape[argName] instanceof SkapNumber) {
-                    out[argName] = this.shape[argName].__default;
+                    if (this.shape[argName].__multi) out[argName] = [];
+                    else out[argName] = this.shape[argName].__default;
                 } else if (this.shape[argName] instanceof SkapSubcommand) {
                     // deno-lint-ignore no-explicit-any
                     const commands: any = {};
@@ -304,13 +321,15 @@ export namespace skap {
                     const argShape = this.shape[argName];
                     if (argShape instanceof SkapString) {
                         if (arg == argShape.name) {
-                            out[argName] = args.shift();
+                            if (argShape.__multi) out[argName].push(args.shift());
+                            else out[argName] = args.shift();
                             did = true;
                         }
                     } else if (argShape instanceof SkapNumber) {
                         if (arg == argShape.name) {
                             try {
-                                out[argName] = Number(args.shift());
+                                if (argShape.__multi) out[argName].push(Number(args.shift()));
+                                else out[argName] = Number(args.shift());
                                 did = true;
                             } catch (e) {
                                 settings.customError!(`Invalid number argument ${argShape.name}`);
@@ -442,7 +461,10 @@ export namespace skap {
                     const shape = this.shape[subc];
                     if (shape instanceof SkapSubcommand) {
                         for (const subcommand in shape.shape) {
-                            out += `  ${subcommand}${shape.shape[subcommand].syntax()}\n`;
+                            out += `  ${subcommand}${shape.shape[subcommand].syntax()}`;
+                            if (shape.shape[subcommand].__description !== "") {
+                                out += `${Ansi.italic}    ${Ansi.italic}${shape.shape[subcommand].__description}${Ansi.reset}\n`
+                            }
                         }
                     }
                 }
