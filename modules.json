@@ -1,7 +1,7 @@
 {
     "SkDc": {
         "deno": "./deno/SkDc.ts",
-        "node": "./node/SkDc.ts",
+        "node": null,
         "dependencies": ["SkLg", "SkOp"]
     },
     "SkLt": {

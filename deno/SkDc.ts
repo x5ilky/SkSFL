@@ -14,7 +14,6 @@ import {
   AutocompleteInteraction,
   ButtonBuilder,
   ButtonInteraction,
-  ButtonStyle,
   CacheType,
   ChatInputCommandInteraction,
   Client,
@@ -25,10 +24,15 @@ import {
   InteractionCollector,
   REST,
   Routes,
+} from 'npm:discord.js';
+import {
   SlashCommandBuilder,
   SlashCommandSubcommandBuilder,
+} from "npm:@discordjs/builders";
+import {
+  ButtonStyle,
   ChannelType
-} from 'npm:discord.js';
+} from "npm:@discordjs/core"
 
 import path from 'node:path';
 import proxy from 'npm:node-global-proxy';
@@ -169,7 +173,7 @@ export class SilkDC<TCustomState> {
         if (!st.isDirectory) {
           const f: SilkDCCommand<TCustomState> = (await import('./' + fp)).default;
           this.logger.info(
-            `Loaded command: ${fstr} |  Desc: ${f.description} | Path: ${'./' + path.join(p, fstr.name)}`
+            `Loaded command: ${fstr.name} |  Desc: ${f.description} | Path: ${'./' + path.join(p, fstr.name)}`
           );
           this.commands.set(path.basename(fstr.name, '.ts'), f);
         }
@@ -362,7 +366,7 @@ export function createActionBar(
   return row as ActionRowBuilder<ButtonBuilder>;
 }
 
-export type MenuBuilderButton<T> = {
+export type MenuBuilderButton<T = never> = {
   label: string;
   style: ButtonStyle;
   disabled?: boolean;

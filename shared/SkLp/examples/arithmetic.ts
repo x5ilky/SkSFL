@@ -8,7 +8,7 @@ const tokens = new TSLexer(
     ),
 ).lex();
 // deno-lint-ignore no-explicit-any
-const ezp = new EZP<TsToken, any>(tokens);
+const ezp = new EZP<TsToken, {type: "number", num: number} | {type: string}>(tokens);
 const valueRule = ezp.addRule("value", (ezp) => {
     const literal = ezp.addRule("number", (ezp) => {
         if (ezp.doesNext((t) => t.__type === "Symbol" && t.value.op === "(")) {
@@ -31,7 +31,7 @@ const valueRule = ezp.addRule("value", (ezp) => {
 
     const factor = ezp.addRule("value * value", (ezp) => {
         const num = ezp.expectRule(literal);
-        return ezp.hasNext(
+        return ezp.thisOrIf(
             num,
             (token) => token.__type === "Symbol" && token.value.op === "*",
             (_token) => {
@@ -46,7 +46,7 @@ const valueRule = ezp.addRule("value", (ezp) => {
     });
     const term = ezp.addRule("value + value", (ezp) => {
         const num = ezp.expectRule(factor);
-        return ezp.hasNext(
+        return ezp.thisOrIf(
             num,
             (token) => token.__type === "Symbol" && token.value.op === "+",
             (_token) => {

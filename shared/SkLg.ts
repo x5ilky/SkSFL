@@ -9,24 +9,24 @@ export type LoggerTag = {
     priority: number
 }
 export type LoggerConfig = {
-    prefixTags?: LoggerTag[];
-    suffixTags?: LoggerTag[];
-    levels?: {[level: number]: LoggerTag};
+    prefixTags: LoggerTag[];
+    suffixTags: LoggerTag[];
+    levels: {[level: number]: LoggerTag};
     
-    tagPrefix?: string;
-    tagSuffix?: string;
+    tagPrefix: string;
+    tagSuffix: string;
 
-    startTag?: LoggerTag;
-    endTag?: LoggerTag;
+    startTag: LoggerTag;
+    endTag: LoggerTag;
 
-    hideThreshold?: number;
+    hideThreshold: number;
 }
 
 export class Logger {
     config: LoggerConfig;
     maxTagLength: number;
-    constructor(config: LoggerConfig) {
-        this.config = config;
+    constructor(config: Partial<LoggerConfig>) {
+        this.config = config as LoggerConfig;
         this.config.hideThreshold ??= 0;
         this.config.levels ??= {
             0: {color: [77, 183, 53], name: "DEBUG", priority: 0},
