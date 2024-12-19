@@ -7,7 +7,7 @@ const tokens = new TSLexer(
         Deno.args.shift() ?? "./examples/arithmetic-test.txt",
     ),
 ).lex();
-// deno-lint-ignore no-explicit-any
+
 const ezp = new EZP<TsToken, {type: "number", num: number} | {type: string}>(tokens);
 const valueRule = ezp.addRule("value", (ezp) => {
     const literal = ezp.addRule("number", (ezp) => {
