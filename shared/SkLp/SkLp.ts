@@ -24,7 +24,7 @@ export class EZP<TokenType, NodeType> {
         return v;
     }
 
-    instantiateRule(target: string, scanner: EZPScanner<TokenType, NodeType>): TargetRule<TokenType, NodeType> {
+    instantiateRule<I extends TokenType, O extends NodeType>(target: string, scanner: EZPScanner<I, O>): TargetRule<I, O> {
         return {
             target,
             scanner
@@ -62,6 +62,9 @@ export class EZP<TokenType, NodeType> {
      */
     consume(): TokenType {
         return this.tokens.shift()!;
+    }
+    peek(): TokenType {
+        return this.tokens[0];
     }
     expect<O extends TokenType>(pred: (token: TokenType) => boolean): O {
         if (this.tokens.length === 0) throw new Error("Not enough elements");
