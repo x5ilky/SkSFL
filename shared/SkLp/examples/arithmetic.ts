@@ -60,7 +60,7 @@ const valueRule = ezp.addRule("value", (ezp) => {
         );
     });
 
-    return ezp.giveLastThatWorks(term);
+    return ezp.getFirstThatWorks(term);
 });
 
 const nodes = ezp.parse();
