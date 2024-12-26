@@ -1,26 +1,34 @@
-type EZPScanner<T, O> = (ezp: EZP<T, O>) => O;
-type TargetRule<TokenType, NodeType> = {
+type EZPScanner<T, O, V = O> = (ezp: EZP<T, O>) => V;
+export type EZPRule<TokenType, NodeType, V = NodeType> = {
   target: string;
-  scanner: EZPScanner<TokenType, NodeType>;
+  scanner: EZPScanner<TokenType, NodeType, V>;
 };
 export class EZPError extends Error {
     constructor(message: string, options?: ErrorOptions) {
         super(message, options);
     }
 }
+type ApplyTypePredicate<T, E> = (T extends (value: E) => value is (infer R extends E) ? R : E) ;
+
 export class EZP<TokenType, NodeType> {
     tokens: TokenType[];
     output: NodeType[];
-    targetRules: TargetRule<TokenType, NodeType>[];
+    targetRules: EZPRule<TokenType, NodeType>[];
+    last: TokenType;
 
     
-    constructor(tokens: TokenType[], private getLoc?: (token: TokenType) => [string, number, number]) {
+    constructor(tokens: TokenType[], private options: {
+        getLoc?: (token: TokenType) => [string, number, number],
+        customError?: (error: string, token: TokenType) => Error
+    }) {
         this.tokens = tokens;
         this.output = [];
         this.targetRules = [];
+        this.last = tokens[0];
+        this.options.customError ??= (error) => new Error(error);
     }
 
-    addRule(target: string, scanner: EZPScanner<TokenType, NodeType>): TargetRule<TokenType, NodeType> {
+    addRule(target: string, scanner: EZPScanner<TokenType, NodeType>): EZPRule<TokenType, NodeType> {
         let v;
         this.targetRules.push(v = {
             target,
@@ -29,7 +37,14 @@ export class EZP<TokenType, NodeType> {
         return v;
     }
 
-    instantiateRule<I extends TokenType, O extends NodeType>(target: string, scanner: EZPScanner<I, O>): TargetRule<I, O> {
+    instantiateRule<I extends TokenType, O extends NodeType>(target: string, scanner: EZPScanner<I, O>): EZPRule<I, O> {
+        return {
+            target,
+            scanner
+        }
+    }
+
+    instantiateHelper<I extends TokenType, O>(target: string, scanner: EZPScanner<I, NodeType, O>): EZPRule<I, NodeType, O> {
         return {
             target,
             scanner
@@ -46,7 +61,7 @@ export class EZP<TokenType, NodeType> {
                 }
                 message += err.map(a => a.message + "\n").join("");
                 message += `But instead got ${JSON.stringify(this.tokens[0])}`;
-                return new Error(message);
+                return this.options.customError!(message, this.tokens[0]);
             }
         }
         return this.output;
@@ -56,7 +71,7 @@ export class EZP<TokenType, NodeType> {
         const errors: any[] = [];
         for (const r of this.targetRules) {
             try {
-                this.expectRule(r);
+                this.output.push(this.expectRule(r));
                 return true;
             } catch (e) {
                 // pass
@@ -79,25 +94,24 @@ export class EZP<TokenType, NodeType> {
     peekAnd(test: (t: TokenType) => boolean) {
         return this.peek() !== undefined && test(this.peek());
     }
-    expect<O extends TokenType>(pred: (token: TokenType) => boolean): O {
+    expect<O extends TokenType, F extends (token: TokenType) => unknown>(pred: F): ApplyTypePredicate<F, O> {
         if (this.tokens.length === 0) throw new EZPError("Not enough elements");
         let t;
         if (!pred(t = this.tokens.shift()!)) throw new EZPError("mismatch")
-        return t as O;
+        return t as ApplyTypePredicate<F, O>;
     }
-    expectOrTerm<O extends TokenType>(error: string, pred: (token: TokenType) => boolean): O {
-        if (this.tokens.length === 0) throw new Error(error);
+    expectOrTerm<O extends TokenType, F extends (token: TokenType) => unknown>(error: string, pred: F): ApplyTypePredicate<F, O> {
+        if (this.tokens.length === 0) throw this.options.customError!(error, this.last);
         let t;
-        if (!pred(t = this.tokens.shift()!)) throw new Error(error);
-        return t as O;
+        if (!pred(t = this.tokens.shift()!)) throw this.options.customError!(error, this.last);
+        return t as ApplyTypePredicate<F, O>;
     }
-    expectRule<O extends NodeType>(rule: TargetRule<TokenType, O>): O {
+    expectRule<O extends NodeType, V = O>(rule: EZPRule<TokenType, O, V>): V {
         const prevTokens = structuredClone(this.tokens);
         const prevNodes = structuredClone(this.output);
         try {
-            const ezp = new EZP<TokenType, O>(this.tokens, this.getLoc);
-            const value = rule.scanner(ezp) as O;
-            this.output.push(value);
+            const ezp = new EZP<TokenType, O>(this.tokens, this.options);
+            const value = rule.scanner(ezp) as V;
             this.tokens = ezp.tokens;
             return value;
         } catch (e) {
@@ -105,8 +119,8 @@ export class EZP<TokenType, NodeType> {
                 this.tokens = prevTokens;
                 this.output = prevNodes;
                 let errMsg = `Expected rule ${rule.target}:\n${e.message}`;
-                if (this.getLoc !== undefined) {
-                    const [fp, ln, col] = this.getLoc(this.tokens[0]);
+                if (this.options.getLoc !== undefined) {
+                    const [fp, ln, col] = this.options.getLoc(this.tokens[0]);
                     errMsg = `At ${fp}:${ln}:${col}: ${errMsg}`
                 }
                 throw new EZPError(errMsg);
@@ -114,23 +128,23 @@ export class EZP<TokenType, NodeType> {
             throw e;
         }
     }
-    expectRuleOrTerm<O extends NodeType>(error: string, rule: TargetRule<TokenType, O>): O {
+    
+    expectRuleOrTerm<O extends NodeType, V>(error: string, rule: EZPRule<TokenType, O, V>): V {
         try {
-            const ezp = new EZP<TokenType, O>(this.tokens, this.getLoc);
-            const value = rule.scanner(ezp) as O;
-            this.output.push(value);
+            const ezp = new EZP<TokenType, O>(this.tokens, this.options);
+            const value = rule.scanner(ezp) as V;
             this.tokens = ezp.tokens;
             return value;
         } catch (e) {
             let errMsg = error;
-            if (this.getLoc !== undefined && this.tokens.length) {
-                const [fp, ln, col] = this.getLoc(this.tokens[0]);
+            if (this.options.getLoc !== undefined && this.tokens.length) {
+                const [fp, ln, col] = this.options.getLoc(this.tokens[0]);
                 errMsg = `At ${fp}:${ln}:${col}: ${errMsg}`
             }
-            throw new Error(errMsg + "\n" + (e as Error)?.message);
+            throw this.options.customError!(errMsg + "\n" + (e as Error)?.message, this.tokens[0]);
         }
     }
-    getFirstThatWorks<O extends NodeType>(...rules: TargetRule<TokenType, O>[]): O {
+    getFirstThatWorks<O extends NodeType>(...rules: EZPRule<TokenType, O>[]): O {
         for (const r of rules) {
             try {
                 const v = this.expectRule(r) as O;
@@ -141,7 +155,7 @@ export class EZP<TokenType, NodeType> {
         }
         throw new EZPError("None worked")
     }
-    getFirstThatWorksOrTerm<O extends NodeType>(error: string, ...rules: TargetRule<TokenType, O>[]): O {
+    getFirstThatWorksOrTerm<O extends NodeType>(error: string, ...rules: EZPRule<TokenType, O>[]): O {
         const errors = [];
         for (const r of rules) {
             try {
@@ -149,17 +163,19 @@ export class EZP<TokenType, NodeType> {
                 return v;
             } catch (e) {
                 // nothing
-                errors.push(e)
+                if (e instanceof Error && !(e instanceof EZPError)) {
+                    errors.push(e)
+                }
             }
         }
-        throw new Error(error + errors)
+        throw this.options.customError!(error + errors, this.tokens[0]);
     }
 
-    tryRule<O extends NodeType>(rule: TargetRule<TokenType, O>): O | null {
+    tryRule<O extends NodeType>(rule: EZPRule<TokenType, O>): O | null {
         const prevTokens = structuredClone(this.tokens);
         const prevNodes = structuredClone(this.output);
         try {
-            const ezp = new EZP<TokenType, O>(this.tokens, this.getLoc);
+            const ezp = new EZP<TokenType, O>(this.tokens, this.options);
             const value = rule.scanner(ezp) as O;
             this.output.push(value);
             this.tokens = ezp.tokens;

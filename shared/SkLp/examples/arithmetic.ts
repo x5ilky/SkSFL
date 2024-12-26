@@ -8,7 +8,7 @@ const tokens = new TSLexer(
     ),
 ).lex();
 
-const ezp = new EZP<TsToken, {type: "number", num: number} | {type: string}>(tokens);
+const ezp = new EZP<TsToken, {type: "number", num: number} | {type: string}>(tokens, {});
 const valueRule = ezp.addRule("value", (ezp) => {
     const literal = ezp.addRule("number", (ezp) => {
         if (ezp.doesNext((t) => t.__type === "Symbol" && t.value.op === "(")) {
@@ -24,7 +24,7 @@ const valueRule = ezp.addRule("value", (ezp) => {
         }
         const num = ezp.expect((a) => a.__type === "Number");
         return {
-            num: (<TsToken$Number> num).value.num,
+            num: num.value.num,
             type: "number",
         };
     });

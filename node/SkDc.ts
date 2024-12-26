@@ -39,7 +39,7 @@ import fs from 'fs/promises';
 import rd from 'readline';
 
 // #begin_import
-import { SkResult } from "../shared/SkOp.ts";
+import { SkOption, SkResult } from "../shared/SkOp.ts";
 import { Logger, LogLevel } from "../shared/SkLg.ts";
 // #end_import
 
@@ -60,7 +60,7 @@ const question = (prompt: string): Promise<string> => {
 interface SilkDCConfig {
   token: string;
   commandsDir: string;
-  http_proxy: SkResult<string>;
+  http_proxy: SkOption<string>;
   cooldownIgnore: string[];
 }
 
@@ -147,6 +147,7 @@ export class SilkDC<TCustomState> {
             cmd.execute(interaction, this);
           } catch (e) {
             this.logger.error(`${e}`);
+            this.logger.debug((e as any)?.stack)
           }
           this.cooldown[id][interaction.commandName] =
             Date.now() + (cmd.cooldown ?? 5000);
@@ -168,7 +169,8 @@ export class SilkDC<TCustomState> {
         const fp = path.join(p, fstr);
         const st = await fs.stat(fp);
         if (!st.isDirectory()) {
-          const f: SilkDCCommand<TCustomState> = (await import('./' + fp)).default;
+          delete require.cache[require.resolve('./' + fp)]
+          const f: SilkDCCommand<TCustomState> = require('./' + fp).default;
           this.logger.info(
             `Loaded command: ${fstr} |  Desc: ${f.description} | Path: ${'./' + path.join(p, fstr)}`
           );
@@ -255,11 +257,16 @@ export class SilkDC<TCustomState> {
 \trfrCmd - refreshes commands to the discord api
 \tquit - quits the command
 \tgetDevLink - gets a dev invite link with admin perms and bot and application.commands scope
+\treload - reloads a single command file
 \thelp - prints this
 Custom commands:`);
         for (const cmd in this.customCommands) {
           this.logger.info('\t' + cmd);
         }
+      } else if (input === "reload") {
+        this.logger.start(LogLevel.INFO, "start reload");
+        await this.init();
+        this.logger.end(LogLevel.INFO, "start reload");
       } else {
         if (input.split(/\s+/g)[0] in this.customCommands) {
           this.customCommands[input.split(/\s+/g)[0]](input);
@@ -288,8 +295,8 @@ export interface SilkDCCommand<T> {
     instance: SilkDC<T>
   ) => Promise<void>;
   description: string;
-  options: SkResult<SlashCommandBuilder>;
-  subOptions: SkResult<SlashCommandSubcommandBuilder>;
+  options: SkOption<SlashCommandBuilder>;
+  subOptions: SkOption<SlashCommandSubcommandBuilder>;
   cooldown?: number;
   autocomplete?: (Interaction: AutocompleteInteraction) => Promise<void>;
 }
@@ -363,7 +370,7 @@ export function createActionBar(
   return row as ActionRowBuilder<ButtonBuilder>;
 }
 
-export type MenuBuilderButton<T> = {
+export type MenuBuilderButton<T = never> = {
   label: string;
   style: ButtonStyle;
   disabled?: boolean;
