@@ -32,19 +32,19 @@ deno run -A ./build/SkAm.ts build -m <modules> -r <runtime> -o <output file>
 
 | Module | Full Name                            | Description                                   |
 | ------ | ------------------------------------ | --------------------------------------------- |
-| `SkDc` | **S**il**k** **D**is**c**ord         | Discord bot library                           |
-| `SkLg` | **S**il**k** **L**o**g**ger          | Fancy colored logger                          |
-| `SkOp` | **S**il**k** **Op**tion              | Simple option type implementation             |
-| `SkRd` | **S**il**k** **R**an**d**om          | Short `Math.random` wrapper                   |
-| `SkAn` | **S**il**k** **An**si                | Ansi color code wrapper                       |
-| `SkLt` | **S**il**k** **L**oot **T**able      | Loot table (weighted random) implementation   |
-| `SkCh` | **S**il**k** **Ch**aining            | Value chaining                                |
-| `SkAp` | **S**il**k** **A**rgument **P**arser | Type safe shaped command line argument parser |
-| `SkSa` | **S**il**k** **S**tring **A**lign    | Align strings for printing                    |
+| `SkDc` | **S**il**k**y's **D**is**c**ord         | Discord bot library                           |
+| `SkLg` | **S**il**k**y's **L**o**g**ger          | Fancy colored logger                          |
+| `SkOp` | **S**il**k**y's **Op**tion              | Simple option type implementation             |
+| `SkRd` | **S**il**k**y's **R**an**d**om          | Short `Math.random` wrapper                   |
+| `SkAn` | **S**il**k**y's **An**si                | Ansi color code wrapper                       |
+| `SkLt` | **S**il**k**y's **L**oot **T**able      | Loot table (weighted random) implementation   |
+| `SkCh` | **S**il**k**y's **Ch**aining            | Value chaining                                |
+| `SkAp` | **S**il**k**y's **A**rgument **P**arser | Type safe shaped command line argument parser |
+| `SkSa` | **S**il**k**y's **S**tring **A**lign    | Align strings for printing                    |
 
 ## Tools
 
 | Tool   | Full Name                           | Description                  |
 | ------ | ----------------------------------- | ---------------------------- |
-| `StAm` | **S**ilk **T**ool **Am**algamate         | Amalgamates modules together |
-| `StTg` | **S**ilk **T**ool **T**ype **G**enerator | Generates types              |
+| `StAm` | **S**ilky **T**ool **Am**algamate         | Amalgamates modules together |
+| `StTg` | **S**ilky **T**ool **T**ype **G**enerator | Generates types              |

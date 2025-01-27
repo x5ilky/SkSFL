@@ -44,15 +44,16 @@ export namespace skap {
       ? string | undefined 
       : T extends SkapPositional<number> 
       ? string | undefined 
-      : T extends SkapRest
-      ? string[]
       : T extends SkapNumber<string>
       ? number | undefined
       : T extends SkapBoolean<string>
       ? boolean
       : T extends SkapSubcommand<infer U extends SkapSubcommandShape> ? {commands: {
             [K in keyof U]: SkapInfer<U[K]> | undefined
-        }, selected: keyof U} : never;
+        }, selected: keyof U}
+      : T extends SkapRest
+      ? string[]
+      : never;
     type Require<T> = Exclude<T, undefined>;
 
     /**

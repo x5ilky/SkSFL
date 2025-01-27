@@ -13,12 +13,12 @@ const logger = new Logger({});
 const shape = skap.command({
     subc: skap.subcommand({
         build: skap.command({
-            modules: skap.rest(),
-            runtime: skap.string("-r"),
-            outFile: skap.string("-o"),
-            help: skap.boolean("--help"),
-            minify: skap.boolean("-M"),
-            minifyRemoveComments: skap.boolean("-Mc")
+            modules: skap.rest().description("modules to add to your bundle"),
+            runtime: skap.string("-r").description("which runtime to build for (deno, node)"),
+            outFile: skap.string("-o").description("output file path"),
+            help: skap.boolean("--help").description("display this message"),
+            minify: skap.boolean("-M").description("do a (very bad) minification of your files"),
+            minifyRemoveComments: skap.boolean("-Mc").description("minification and remove comments (might be broken)")
         })
     }).required()
 })
