@@ -9,7 +9,7 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "@types/node": "^22.9.0"
+    "@types/node": "^22.10.2"
   },
   "dependencies": {
     "discord.js": "^14.16.3",

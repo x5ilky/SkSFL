@@ -289,6 +289,7 @@ export class TSLexer {
             if (this.peek() === "b") {
                 // binary
                 let buffer = "0b";
+                this.eat();
                 while (true) {
                     if (this.peek() === "1" || this.peek() === "0") {
                         buffer += this.eat();
@@ -299,6 +300,7 @@ export class TSLexer {
             } else if (this.peek() === "x") {
                 // binary
                 let buffer = "0x";
+                this.eat();
                 while (true) {
                     if (/[0-9a-fA-F]/.test(char)) buffer += this.eat();
                     else break;

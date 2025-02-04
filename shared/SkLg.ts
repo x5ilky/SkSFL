@@ -9,24 +9,24 @@ export type LoggerTag = {
     priority: number
 }
 export type LoggerConfig = {
-    prefixTags?: LoggerTag[];
-    suffixTags?: LoggerTag[];
-    levels?: {[level: number]: LoggerTag};
+    prefixTags: LoggerTag[];
+    suffixTags: LoggerTag[];
+    levels: {[level: number]: LoggerTag};
     
-    tagPrefix?: string;
-    tagSuffix?: string;
+    tagPrefix: string;
+    tagSuffix: string;
 
-    startTag?: LoggerTag;
-    endTag?: LoggerTag;
+    startTag: LoggerTag;
+    endTag: LoggerTag;
 
-    hideThreshold?: number;
+    hideThreshold: number;
 }
 
 export class Logger {
     config: LoggerConfig;
     maxTagLength: number;
-    constructor(config: LoggerConfig) {
-        this.config = config;
+    constructor(config: Partial<LoggerConfig>) {
+        this.config = config as LoggerConfig;
         this.config.hideThreshold ??= 0;
         this.config.levels ??= {
             0: {color: [77, 183, 53], name: "DEBUG", priority: 0},
@@ -73,7 +73,7 @@ export class Logger {
                 this.config.levels![10]
             ],
             ...args
-        )
+        );
     }
 
     // deno-lint-ignore no-explicit-any
@@ -84,7 +84,7 @@ export class Logger {
                 this.config.levels![0]
             ],
             ...args
-        )
+        );
     }
 
     // deno-lint-ignore no-explicit-any
@@ -95,7 +95,7 @@ export class Logger {
                 this.config.levels![20]
             ],
             ...args
-        )
+        );
     }
 
     // deno-lint-ignore no-explicit-any
@@ -106,7 +106,7 @@ export class Logger {
                 this.config.levels![30]
             ],
             ...args
-        )
+        );
     }
 
     // deno-lint-ignore no-explicit-any
@@ -117,7 +117,7 @@ export class Logger {
                 this.config.levels![level]
             ],
             ...args
-        )
+        );
     }
 
     start(level: number, ...args: string[]) {
@@ -128,7 +128,7 @@ export class Logger {
                 this.config.startTag!
             ],
             ...args
-        )
+        );
     }
     end(level: number, ...args: string[]) {
         this.printWithTags(
@@ -138,7 +138,7 @@ export class Logger {
                 this.config.endTag!
             ],
             ...args
-        )
+        );
     }
 }
 
@@ -147,4 +147,4 @@ export const LogLevel = {
     INFO: 10,
     WARN: 20,
     ERROR: 30
-}
+};
