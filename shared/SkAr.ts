@@ -16,3 +16,7 @@ export function arreq<T, U>(a: T[], b: U[], eq: (a: T, b: U) => boolean) {
     }
     return true;
 }
+
+export function arrjoinwith<T, U>(a: T[], map: (a: T) => U, join: string) {
+    return a.map(map).join(join);
+}

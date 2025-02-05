@@ -24,7 +24,7 @@ export type LoggerConfig = {
 
 export class Logger {
     config: LoggerConfig;
-    maxTagLength: number;
+    maxTagLengths: number[];
     constructor(config: Partial<LoggerConfig>) {
         this.config = config as LoggerConfig;
         this.config.hideThreshold ??= 0;
@@ -47,22 +47,20 @@ export class Logger {
             name: "END",
             priority: -10
         };
-        this.maxTagLength = Math.max(
-            this.config.startTag!.name.length,
-            this.config.endTag!.name.length,
-            ...Object.values(this.config.levels!).map(a => a.name.length),
-            ...this.config.prefixTags?.map(a => a.name.length) ?? [],
-            ...this.config.suffixTags?.map(a => a.name.length) ?? []
-        ) + this.config.tagPrefix!.length + this.config.tagSuffix!.length;
+        this.maxTagLengths = [];
     }
 
     // deno-lint-ignore no-explicit-any
     printWithTags(tags: LoggerTag[], ...args: any[]) {
-        const tag = (a: LoggerTag) => {
-            const raw = `${this.config.tagPrefix}${a.name}${this.config.tagSuffix}`.padEnd(this.maxTagLength, " ");
+        const tag = (a: LoggerTag, index: number) => {
+            let raw = `${this.config.tagPrefix}${a.name}${this.config.tagSuffix}`;
+            if (this.maxTagLengths[index] === undefined || raw.length > this.maxTagLengths[index]) {
+                this.maxTagLengths[index] = raw.length;
+            }
+            raw = raw.padEnd(this.maxTagLengths[index], " ");;
             return `${Ansi.rgb(a.color[0], a.color[1], a.color[2])}${raw}${Ansi.reset}`;
         }
-        console.log(`${tags.map((a) => tag(a).padStart(this.maxTagLength, "#")).join(' ')} ${args.join(' ')}`);
+        console.log(`${tags.map((a, i) => tag(a, i).padStart(this.maxTagLengths[i], "#")).join(' ')} ${args.join(' ')}`);
     }
 
     // deno-lint-ignore no-explicit-any
