@@ -10,21 +10,47 @@ export class EZPError extends Error {
 }
 type ApplyTypePredicate<T, E> = (T extends (value: E) => value is (infer R extends E) ? R : E) ;
 
+class Iterray<T> {
+    values: T[]
+    iterator: number
+
+    constructor(values: T[]) {
+        this.values = values;
+        this.iterator = 0;
+    }
+
+    hasItems(): boolean {
+        return this.iterator < this.values.length
+    }
+
+    peek(): T {
+        return this.values[this.iterator]
+    }
+
+    shift(): T {
+        return this.values[this.iterator++]
+    }
+
+    push(value: T) {
+        this.values.push(value)
+    }
+}
+
 export class EZP<TokenType, NodeType> {
-    tokens: TokenType[];
-    output: NodeType[];
+    tokens: Iterray<TokenType>;
+    output: Iterray<NodeType>;
     targetRules: EZPRule<TokenType, NodeType>[];
     last: TokenType;
 
     
-    constructor(tokens: TokenType[], private options: {
+    constructor(tokens: TokenType[] | Iterray<TokenType>, private options: {
         getLoc?: (token: TokenType) => [string, number, number],
         customError?: (error: string, token: TokenType) => Error
     }) {
-        this.tokens = tokens;
-        this.output = [];
+        this.tokens = tokens instanceof Iterray ? tokens : new Iterray(tokens);
+        this.output = new Iterray([]);
         this.targetRules = [];
-        this.last = tokens[0];
+        this.last = this.tokens.values[0];
         this.options.customError ??= (error) => new Error(error);
     }
 
@@ -52,7 +78,7 @@ export class EZP<TokenType, NodeType> {
     }
     
     parse() {
-        while (this.tokens.length) {
+        while (this.tokens.hasItems()) {
             const err = this.parseOnce();
             if (err !== true) {
                 let message = `Failed to parse, expected:\n`;
@@ -60,8 +86,8 @@ export class EZP<TokenType, NodeType> {
                     message += `  ${r.target}\n`;
                 }
                 message += err.map(a => a.message + "\n").join("");
-                message += `But instead got ${JSON.stringify(this.tokens[0])}`;
-                return this.options.customError!(message, this.tokens[0]);
+                message += `But instead got ${JSON.stringify(this.peek())}`;
+                return this.options.customError!(message, this.peek());
             }
         }
         return this.output;
@@ -89,26 +115,26 @@ export class EZP<TokenType, NodeType> {
         return this.tokens.shift()!;
     }
     peek(): TokenType {
-        return this.tokens[0];
+        return this.tokens.peek();
     }
     peekAnd(test: (t: TokenType) => boolean) {
         return this.peek() !== undefined && test(this.peek());
     }
     expect<O extends TokenType, F extends (token: TokenType) => unknown>(pred: F): ApplyTypePredicate<F, O> {
-        if (this.tokens.length === 0) throw new EZPError("Not enough elements");
+        if (!this.tokens.hasItems()) throw new EZPError("Not enough elements");
         let t;
         if (!pred(t = this.tokens.shift()!)) throw new EZPError("mismatch")
         return t as ApplyTypePredicate<F, O>;
     }
     expectOrTerm<O extends TokenType, F extends (token: TokenType) => unknown>(error: string, pred: F): ApplyTypePredicate<F, O> {
-        if (this.tokens.length === 0) throw this.options.customError!(error, this.last);
+        if (!this.tokens.hasItems()) throw this.options.customError!(error, this.last);
         let t;
         if (!pred(t = this.tokens.shift()!)) throw this.options.customError!(error, this.last);
         return t as ApplyTypePredicate<F, O>;
     }
     expectRule<O extends NodeType, V = O>(rule: EZPRule<TokenType, O, V>): V {
-        const prevTokens = structuredClone(this.tokens);
-        const prevNodes = structuredClone(this.output);
+        const prevTokens = this.tokens.iterator;
+        const prevNodes = this.output.iterator;
         try {
             const ezp = new EZP<TokenType, O>(this.tokens, this.options);
             const value = rule.scanner(ezp) as V;
@@ -116,11 +142,12 @@ export class EZP<TokenType, NodeType> {
             return value;
         } catch (e) {
             if (e instanceof EZPError) {
-                this.tokens = prevTokens;
-                this.output = prevNodes;
+                this.tokens.iterator = prevTokens;
+                this.output.iterator = prevNodes;
+                this.output.values = this.output.values.slice(0, prevNodes);
                 let errMsg = `Expected rule ${rule.target}:\n${e.message}`;
                 if (this.options.getLoc !== undefined) {
-                    const [fp, ln, col] = this.options.getLoc(this.tokens[0]);
+                    const [fp, ln, col] = this.options.getLoc(this.tokens.peek());
                     errMsg = `At ${fp}:${ln}:${col}: ${errMsg}`
                 }
                 throw new EZPError(errMsg);
@@ -137,11 +164,11 @@ export class EZP<TokenType, NodeType> {
             return value;
         } catch (e) {
             let errMsg = error;
-            if (this.options.getLoc !== undefined && this.tokens.length) {
-                const [fp, ln, col] = this.options.getLoc(this.tokens[0]);
+            if (this.options.getLoc !== undefined && this.tokens.hasItems()) {
+                const [fp, ln, col] = this.options.getLoc(this.tokens.peek());
                 errMsg = `At ${fp}:${ln}:${col}: ${errMsg}`
             }
-            throw this.options.customError!(errMsg + "\n" + (e as Error)?.message, this.tokens[0]);
+            throw this.options.customError!(errMsg + "\n" + (e as Error)?.message, this.tokens.peek());
         }
     }
     getFirstThatWorks<O extends NodeType>(...rules: EZPRule<TokenType, O>[]): O {
@@ -168,7 +195,7 @@ export class EZP<TokenType, NodeType> {
                 }
             }
         }
-        throw this.options.customError!(error + errors, this.tokens[0]);
+        throw this.options.customError!(error + errors, this.tokens.peek());
     }
 
     tryRule<O extends NodeType>(rule: EZPRule<TokenType, O>): O | null {
@@ -187,13 +214,13 @@ export class EZP<TokenType, NodeType> {
         }
     }
     thisOrIf<O extends NodeType>(value: O, pred: (token: TokenType) => boolean, cb: (token: TokenType) => O): O {
-        if (this.tokens.length && pred(this.tokens[0])) {
+        if (this.tokens.hasItems() && pred(this.tokens.peek())) {
             return cb(this.tokens.shift()!);
         }
         return value;
     }
     
     doesNext(pred: (token: TokenType) => boolean): boolean {
-        return this.tokens.length ? pred(this.tokens[0]) : false;
+        return this.tokens.hasItems() ? pred(this.tokens.peek()) : false;
     }
 }
