@@ -90,7 +90,7 @@ export class EZP<TokenType, NodeType> {
                 return this.options.customError!(message, this.peek());
             }
         }
-        return this.output;
+        return this.output.values;
     }
     parseOnce() {
         // deno-lint-ignore no-explicit-any
@@ -199,8 +199,8 @@ export class EZP<TokenType, NodeType> {
     }
 
     tryRule<O extends NodeType>(rule: EZPRule<TokenType, O>): O | null {
-        const prevTokens = structuredClone(this.tokens);
-        const prevNodes = structuredClone(this.output);
+        const prevTokens = this.tokens.iterator;
+        const prevNodes = this.output.iterator;
         try {
             const ezp = new EZP<TokenType, O>(this.tokens, this.options);
             const value = rule.scanner(ezp) as O;
@@ -208,8 +208,9 @@ export class EZP<TokenType, NodeType> {
             this.tokens = ezp.tokens;
             return value;
         } catch {
-            this.tokens = prevTokens;
-            this.output = prevNodes;
+            this.tokens.iterator = prevTokens;
+            this.output.iterator = prevNodes;
+            this.output.values = this.output.values.slice(0, prevNodes)
             return null;
         }
     }
