@@ -1,5 +1,5 @@
 import { EZP } from "../SkLp.ts";
-import { type TsToken, type TsToken$Number } from "../../SkTs/base.ts";
+import { type TsToken } from "../../SkTs/base.ts";
 import { TSLexer } from "../../SkTs/Tk.ts";
 
 const tokens = new TSLexer(
