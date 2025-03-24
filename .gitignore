@@ -2,4 +2,4 @@
 /build/SkOutput.ts
 /dist/**
 
-test*.ts
+test*.*

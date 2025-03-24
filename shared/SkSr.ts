@@ -4,6 +4,7 @@ export class SkSerializer {
     objmap: Map<any, number>;
     valuemap: Map<any, number>;
     keymap: Map<string, number>;
+    special: Map<number, number>;
     buffer: Uint8Array;
     counter: number;
 
@@ -11,6 +12,7 @@ export class SkSerializer {
         this.objmap = new Map();
         this.valuemap = new Map();
         this.keymap = new Map();
+        this.special = new Map();
         this.buffer = null as unknown as Uint8Array;
         this.counter = 0;
     }
@@ -33,6 +35,37 @@ export class SkSerializer {
         if (obj === null) return this.bind(obj);
         if (typeof obj === "object") {
             const c = this.counter++
+            if (obj instanceof Map) {
+                this.special.set(c, 1);
+                const o: any = {};
+                for (const [k, v] of obj) {
+                    const nk = this.bindKey(k);
+                    const ok = v;
+                    if (this.valuemap.has(ok)) 
+                        o[nk] = this.valuemap.get(ok);
+                    else if (this.objmap.has(ok))
+                        o[nk] = this.objmap.get(ok)
+                    else
+                        o[nk] = this.bindObj(ok);
+                }
+                this.objmap.set(o, c);
+                return c;
+            } 
+            if (obj instanceof Array) {
+                this.special.set(c, 2);
+                const o = [];
+                for (const v of obj) {
+                    const ok = v;
+                    if (this.valuemap.has(ok)) 
+                        o.push(this.valuemap.get(ok))
+                    else if (this.objmap.has(ok))
+                        o.push(this.objmap.get(ok))
+                    else
+                        o.push(this.bindObj(ok))
+                }
+                this.objmap.set(o, c);
+                return c;
+            } 
             this.valuemap.set(obj, c);
             const o: any = {};
             for (const k in obj) {
@@ -75,7 +108,13 @@ export class SkSerializer {
                 case "boolean": out += `4`; break;
                 case "symbol": out += `5`; break;
                 case "undefined": out += `6`; break;
-                case "object": out += (m === null ? `9` : `7`); break;
+                case "object": {
+                    if (this.special.has(i)) {
+                        out += `b`;
+                    } else {
+                        out += (m === null ? `9` : `7`); 
+                    }
+                } break;
             }
             switch (typeof m) {
                 case "symbol":
@@ -95,6 +134,18 @@ export class SkSerializer {
                 } break;
                 case "object": {
                     if (m !== null) {
+                        if (this.special.has(i)) {
+                            const spec = this.special.get(i);
+                            if (spec === 2) {
+                                out += this.numToChar(this.special.get(i)!);
+                                out += this.numToChar(m.length);
+                                for (const v of m) {
+                                    out += this.numToChar(v);
+                                }
+                                break;
+                            }
+                            out += this.numToChar(this.special.get(i)!);
+                        }
                         const keys = Object.keys(m);
                         out += this.numToChar(keys.length);
                         for (const key of keys) {
@@ -120,6 +171,7 @@ export class SkSerializer {
     deserialize<T>(str: string): T {
         const keymap = new Map<string, string>();
         const objmap = new Map<number, any>();
+        const special = new Map<number, number>();
 
         
         const MAGIC_NUMBER = "SkSr";
@@ -161,6 +213,18 @@ export class SkSerializer {
                 case "6": { // undefined
                     objmap.set(id, undefined);
                 } break;
+                case "b": {
+                    special.set(id, this.extractNumber());
+                    if (special.get(id) === 2) {
+                        const length = this.extractNumber();
+                        const o = [];
+                        for (let i = 0; i < length; i++) {
+                            o.push(this.extractNumber());
+                        }
+                        objmap.set(id, o);
+                        break;
+                    }
+                } /* falls through */
                 case "7": { // object
                     const keys = this.extractNumber();
                     const o = {} as any;
@@ -209,6 +273,15 @@ export class SkSerializer {
                     return v;
                 case "object": {
                     if (objref in values) return values[objref];
+                    
+                    if (special.has(objref)) {
+                        const type = special.get(objref)!;
+                        if (type === 2) { // Array
+                            const v2 = v.map((a: number) => exp(a));
+                            values[objref] = v2;
+                            return v2;
+                        }
+                    }
                     const o = {} as any;
                     values[objref] = o;
                     for (const k in v) {
@@ -217,6 +290,15 @@ export class SkSerializer {
                         const value = exp(v[k]);
                         o[key] = value;
                     }
+                    if (special.has(objref)) {
+                        const type = special.get(objref)!;
+                        if (type === 1) { // Map
+                            return new Map(Object.entries(o));         
+                        } else {
+                            throw new Error(`unknown builtin type: ${type}`)
+                        }
+                    }
+
                     return o;
                 }
                 case "function": throw new Error();
