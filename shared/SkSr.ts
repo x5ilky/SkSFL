@@ -27,7 +27,8 @@ export class SkSerializer {
         this.keymap.set(key, this.counter);
         return this.counter++;
     }
-    private bindObj(obj: any) {
+    private bindObj(object: any, custom: (v: any) => any) {
+        const obj = custom(object);
         if (typeof obj === "string") return this.bind(obj);
         if (typeof obj === "boolean") return this.bind(obj);
         if (typeof obj === "number") return this.bind(obj);
@@ -52,7 +53,7 @@ export class SkSerializer {
                     else if (this.objmap.has(ok))
                         o[nk] = this.objmap.get(ok)
                     else
-                        o[nk] = this.bindObj(ok);
+                        o[nk] = this.bindObj(ok, custom);
                 }
                 this.objmap.set(o, {
                     type: "map",
@@ -70,7 +71,7 @@ export class SkSerializer {
                     else if (this.objmap.has(ok))
                         o.push(this.objmap.get(ok))
                     else
-                        o.push(this.bindObj(ok))
+                        o.push(this.bindObj(ok, custom))
                 }
                 this.objmap.set(o, {
                     type: "array",
@@ -86,9 +87,9 @@ export class SkSerializer {
                 if (this.valuemap.has(ok)) 
                     o[nk] = this.valuemap.get(ok);
                 else if (this.objmap.has(ok))
-                    o[nk] = this.objmap.get(ok)
+                    o[nk] = this.objmap.get(ok)?.key
                 else
-                    o[nk] = this.bindObj(ok);
+                    o[nk] = this.bindObj(ok, custom);
             }
             this.objmap.set(o, {
                 key: c,
@@ -101,12 +102,12 @@ export class SkSerializer {
             throw new Error(`Cannot serialize functions`);
         throw new Error(`Cannot serialize`);
     }
-    serialize(obj: any) {
+    serialize(obj: any, custom?: (v: any) => any) {
         this.keymap.clear();
         this.objmap.clear();
         this.valuemap.clear();
         let out = "SkSr";
-        const o = this.bindObj(obj);
+        const o = this.bindObj(obj, custom ?? ((v) => v));
         out += `${this.numToChar(o)}${this.numToChar(this.objmap.size)}`
         for (const [m, i] of this.objmap) {
             out += this.numToChar(i.key);
@@ -197,7 +198,7 @@ export class SkSerializer {
     private numToChar(num: number): string {
         return String.fromCharCode((num & 0xFFFF0000) >> 4) + String.fromCharCode(num & 0xFFFF);
     }
-    deserialize<T>(str: string): T {
+    deserialize<T>(str: string, custom?: (v: any) => any): T {
         const keymap = new Map<string, string>();
         const objmap = new Map<number, { type: SkValueType, value: any }>();
         
@@ -301,6 +302,7 @@ export class SkSerializer {
         }
 
         // export
+        const deser = custom ?? ((v) => v);
         const values = {} as any;
         const exp = function (objref: number): any {
             const v = objmap.get(objref);
@@ -340,8 +342,9 @@ export class SkSerializer {
                         const value = exp(v.value[k]);
                         o[key] = value;
                     }
+                    values[objref] = deser(o);
 
-                    return o;
+                    return deser(o);
                 }
             }
         };
