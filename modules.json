@@ -85,5 +85,21 @@
         "deno": "./shared/SkLp/SkLp.ts",
         "node": "./shared/SkLp/SkLp.ts",
         "dependencies": []
+    },
+    "SkVc": {
+        "deno": "./shared/SkVc.ts",
+        "node": "./shared/SkVc.ts",
+        "dependencies": []
+    },
+    "SkFs": {
+        "deno": "./deno/SkFs.ts",
+        "node": "./node/SkFs.ts",
+        "dependencies": []
+    },
+    "SkSr": {
+        "deno": "./shared/SkSr.ts",
+        "node": "./shared/SkSr.ts",
+        "dependencies": []
     }
+    
 }

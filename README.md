@@ -30,8 +30,8 @@ deno run -A ./build/SkAm.ts build -m <modules> -r <runtime> -o <output file>
 
 ## Modules
 
-| Module | Full Name                            | Description                                   |
-| ------ | ------------------------------------ | --------------------------------------------- |
+| Module | Full Name                               | Description                                   |
+| ------ | --------------------------------------- | --------------------------------------------- |
 | `SkDc` | **S**il**k**y's **D**is**c**ord         | Discord bot library                           |
 | `SkLg` | **S**il**k**y's **L**o**g**ger          | Fancy colored logger                          |
 | `SkOp` | **S**il**k**y's **Op**tion              | Simple option type implementation             |
@@ -41,10 +41,11 @@ deno run -A ./build/SkAm.ts build -m <modules> -r <runtime> -o <output file>
 | `SkCh` | **S**il**k**y's **Ch**aining            | Value chaining                                |
 | `SkAp` | **S**il**k**y's **A**rgument **P**arser | Type safe shaped command line argument parser |
 | `SkSa` | **S**il**k**y's **S**tring **A**lign    | Align strings for printing                    |
+| `SkFs` | **S**il**k**y's **F**ile **S**ystem     | Runtime agnostic file system abstraction      |
 
 ## Tools
 
-| Tool   | Full Name                           | Description                  |
-| ------ | ----------------------------------- | ---------------------------- |
+| Tool   | Full Name                                 | Description                  |
+| ------ | ----------------------------------------- | ---------------------------- |
 | `StAm` | **S**ilky **T**ool **Am**algamate         | Amalgamates modules together |
 | `StTg` | **S**ilky **T**ool **T**ype **G**enerator | Generates types              |
