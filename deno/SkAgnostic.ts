@@ -38,4 +38,22 @@ export const skfs = {
     async writeBinary (path: string, bytes: Uint8Array) {
         await Deno.writeFile(path, bytes)
     },
+    onExit(cb: () => void | Promise<void>) {
+        let ran = false;
+        Deno.addSignalListener("SIGINT", async () => {
+            if (!ran) await cb();
+            ran = true;
+            Deno.exit();
+        });
+        Deno.addSignalListener("SIGBREAK", async () => {
+            if (!ran) await cb();
+            ran = true;
+            Deno.exit();
+        });
+        globalThis.addEventListener("unload", async () => {
+            if (!ran) await cb();
+            ran = true;
+            Deno.exit();
+        })
+    }
 }

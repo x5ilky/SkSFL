@@ -1,4 +1,5 @@
 import fs from "fs";
+import process from "process";
 export const skfs = {
     readTextFileSync (path: string) {
         return fs.readFileSync(path, "utf8");
@@ -51,4 +52,10 @@ export const skfs = {
             });
         })
     },
+
+    onExit(cb: (exitCode: number) => void) {
+        process.on("exit", (e) => {
+            cb(e);
+        })
+    }
 }
