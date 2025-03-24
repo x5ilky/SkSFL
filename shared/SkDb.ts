@@ -11,7 +11,8 @@ export class Database<T> {
     value: T;
     constructor(private path: string, private options: {
         initialValue?: T,
-        logger?: Logger
+        logger?: Logger,
+        timer?: number
     }) {
         this.value = null as unknown as T;
         this.load();
@@ -20,7 +21,7 @@ export class Database<T> {
         });
         setInterval(async () => {
             await this.write();
-        }, 1000*60*10);
+        }, 1000*60*(options.timer ?? 10));
     }
 
     async write() {

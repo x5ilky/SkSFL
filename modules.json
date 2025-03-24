@@ -104,7 +104,7 @@
     "SkDb": {
         "deno": "./shared/SkDb.ts",
         "node": "./shared/SkDb.ts",
-        "dependencies": ["SkSr", "SkAgnostic"]
+        "dependencies": ["SkSr", "SkAgnostic", "SkLg"]
     }
     
 }
