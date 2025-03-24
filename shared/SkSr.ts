@@ -1,7 +1,8 @@
 // deno-lint-ignore-file no-explicit-any
 
+type SkValueType = "small" | "map" | "array" | "object" | "null";
 export class SkSerializer {
-    objmap: Map<any, number>;
+    objmap: Map<any, { type: SkValueType, key: number }>;
     valuemap: Map<any, number>;
     keymap: Map<string, number>;
     special: Map<number, number>;
@@ -18,7 +19,7 @@ export class SkSerializer {
     }
 
     private bind(obj: any) {
-        this.objmap.set(obj, this.counter);
+        this.objmap.set(obj, { type: "small", key: this.counter });
         return this.counter++;
     }
     private bindKey(key: string) {
@@ -32,11 +33,16 @@ export class SkSerializer {
         if (typeof obj === "number") return this.bind(obj);
         if (typeof obj === "symbol") return this.bind(obj);
         if (typeof obj === "undefined") return this.bind(obj);
-        if (obj === null) return this.bind(obj);
+        if (obj === null) {
+            const c = this.counter++;
+            this.objmap.set(null, {
+                type: "null",
+                key: c
+            });
+        }
         if (typeof obj === "object") {
             const c = this.counter++
             if (obj instanceof Map) {
-                this.special.set(c, 1);
                 const o: any = {};
                 for (const [k, v] of obj) {
                     const nk = this.bindKey(k);
@@ -48,7 +54,10 @@ export class SkSerializer {
                     else
                         o[nk] = this.bindObj(ok);
                 }
-                this.objmap.set(o, c);
+                this.objmap.set(o, {
+                    type: "map",
+                    key: c
+                });
                 return c;
             } 
             if (obj instanceof Array) {
@@ -63,7 +72,10 @@ export class SkSerializer {
                     else
                         o.push(this.bindObj(ok))
                 }
-                this.objmap.set(o, c);
+                this.objmap.set(o, {
+                    type: "array",
+                    key: c
+                });
                 return c;
             } 
             this.valuemap.set(obj, c);
@@ -78,7 +90,10 @@ export class SkSerializer {
                 else
                     o[nk] = this.bindObj(ok);
             }
-            this.objmap.set(o, c);
+            this.objmap.set(o, {
+                key: c,
+                type: "object"
+            });
             return c;
         };
         if (typeof obj === "bigint") return this.bind(obj);
@@ -94,58 +109,75 @@ export class SkSerializer {
         const o = this.bindObj(obj);
         out += `${this.numToChar(o)}${this.numToChar(this.objmap.size)}`
         for (const [m, i] of this.objmap) {
-            out += this.numToChar(i);
-            switch (typeof m) {
-                case "string": out += `1`; break;
-                case "number": {
-                    if (Number.isInteger(m)) {
-                        out += `2`;
-                    } else {
-                        out += `8`;
-                    }
-                } break;
-                case "bigint": out += `3`; break;
-                case "boolean": out += `4`; break;
-                case "symbol": out += `5`; break;
-                case "undefined": out += `6`; break;
-                case "object": {
-                    if (this.special.has(i)) {
-                        out += `b`;
-                    } else {
-                        out += (m === null ? `9` : `7`); 
-                    }
-                } break;
-            }
-            switch (typeof m) {
-                case "symbol":
-                case "bigint":
-                case "string": {
-                    out += `${this.numToChar(m.toString().length)}${m.toString()}`;
-                } break;
-                case "number": {
-                    if (Number.isInteger(m)) {
-                        out += `${this.numToChar(m)}`;
-                    } else {
-                        out += `${this.numToChar(m.toString().length)}${m.toString()}`
-                    }
-                } break;
-                case "boolean": {
-                    out += this.numToChar(+m);
-                } break;
-                case "object": {
-                    if (m !== null) {
-                        if (this.special.has(i)) {
-                            const spec = this.special.get(i);
-                            if (spec === 2) {
-                                out += this.numToChar(this.special.get(i)!);
-                                out += this.numToChar(m.length);
-                                for (const v of m) {
-                                    out += this.numToChar(v);
-                                }
-                                break;
+            out += this.numToChar(i.key);
+            switch (i.type) {
+                case "small": {
+                    switch (typeof m) {
+                        case "string": out += `1`; break;
+                        case "number": {
+                            if (Number.isInteger(m)) {
+                                out += `2`;
+                            } else {
+                                out += `8`;
                             }
-                            out += this.numToChar(this.special.get(i)!);
-                        }
+                        } break;
+                        case "bigint": out += `3`; break;
+                        case "boolean": out += `4`; break;
+                        case "symbol": out += `5`; break;
+                        case "undefined": out += `6`; break;
+                    }
+                } break;
+                case "object":
+                    out += `7`; 
+                break;
+                case "map":
+                    out += `m`;
+                break;
+                case "array":
+                    out += `a`;
+                break;
+                case "null":
+                    out += `9`;
+                break;
+            }
+            switch (i.type) {
+                case "small": {
+                    switch (typeof m) {
+                        case "symbol":
+                        case "bigint":
+                        case "string": {
+                            out += `${this.numToChar(m.toString().length)}${m.toString()}`;
+                        } break;
+                        case "number": {
+                            if (Number.isInteger(m)) {
+                                out += `${this.numToChar(m)}`;
+                            } else {
+                                out += `${this.numToChar(m.toString().length)}${m.toString()}`
+                            }
+                        } break;
+                        case "boolean": {
+                            out += this.numToChar(+m);
+                        } break;
+                        case "undefined":
+                        case "function":
+                            break;
+                    }
+                } break;
+                case "array": {
+                    out += this.numToChar(m.length);
+                    for (const v of m) {
+                        out += this.numToChar(v);
+                    }
+                } break;
+                case "map": {
+                    const keys = Object.keys(m);
+                    out += this.numToChar(keys.length);
+                    for (const key of keys) {
+                        out += this.numToChar(parseInt(key)) + this.numToChar(m[key]);
+                    }
+                } break;
+                case "object": { 
+                    if (m !== null) {
                         const keys = Object.keys(m);
                         out += this.numToChar(keys.length);
                         for (const key of keys) {
@@ -153,9 +185,6 @@ export class SkSerializer {
                         }
                     }
                 } break;
-                case "undefined":
-                case "function":
-                    break;
             }
         }
         out += `${this.numToChar(this.keymap.size)}`
@@ -170,9 +199,7 @@ export class SkSerializer {
     }
     deserialize<T>(str: string): T {
         const keymap = new Map<string, string>();
-        const objmap = new Map<number, any>();
-        const special = new Map<number, number>();
-
+        const objmap = new Map<number, { type: SkValueType, value: any }>();
         
         const MAGIC_NUMBER = "SkSr";
         if (str.slice(0, 4) !== MAGIC_NUMBER) throw new Error(`Invalid SkSr string, invalid magic number`);
@@ -188,43 +215,42 @@ export class SkSerializer {
                     const length = this.extractNumber();
                     const buf = Array.from(this.buffer.slice(0, length)).map(a => String.fromCharCode(a)).join("");
                     this.buffer = this.buffer.slice(length);
-                    objmap.set(id, buf);
+                    objmap.set(id, {type: "small", value: buf});
                 } break;
                 case "2": { // integer
                     const value = this.extractNumber();
-                    objmap.set(id, value);
+                    objmap.set(id, {type: "small", value});
                 } break;
                 case "3": { // bigint
                     const length = this.extractNumber();
                     const buf = Array.from(this.buffer.slice(0, length)).map(a => String.fromCharCode(a)).join("");
                     this.buffer = this.buffer.slice(length);
-                    objmap.set(id, BigInt(buf));
+                    objmap.set(id, {type: "small", value: BigInt(buf)});
                 } break;
                 case "4": { // boolean
                     const value = this.extractNumber();
-                    objmap.set(id, value === 1);
+                    objmap.set(id, {type: "small", value: value === 1});
                 } break;
                 case "5": { // symbol
                     const length = this.extractNumber();
                     const buf = Array.from(this.buffer.slice(0, length)).map(a => String.fromCharCode(a)).join("");
                     this.buffer = this.buffer.slice(length);
-                    objmap.set(id, Symbol.for(buf));
+                    objmap.set(id, {type: "small", value: Symbol.for(buf)});
                 } break;
                 case "6": { // undefined
-                    objmap.set(id, undefined);
+                    objmap.set(id, {type: "small", value: undefined});
                 } break;
-                case "b": {
-                    special.set(id, this.extractNumber());
-                    if (special.get(id) === 2) {
-                        const length = this.extractNumber();
-                        const o = [];
-                        for (let i = 0; i < length; i++) {
-                            o.push(this.extractNumber());
-                        }
-                        objmap.set(id, o);
-                        break;
+                case "a": {
+                    const length = this.extractNumber();
+                    const o = [];
+                    for (let i = 0; i < length; i++) {
+                        o.push(this.extractNumber());
                     }
-                } /* falls through */
+                    objmap.set(id, {
+                        type: "array",
+                        value: o
+                    });
+                } break;
                 case "7": { // object
                     const keys = this.extractNumber();
                     const o = {} as any;
@@ -233,16 +259,32 @@ export class SkSerializer {
                         const reference = this.extractNumber();
                         o[key] = reference;
                     }
-                    objmap.set(id, o);
+                    objmap.set(id, {
+                        type: "object",
+                        value: o
+                    });
+                } break;
+                case "m": { // Map
+                    const keys = this.extractNumber();
+                    const o = {} as any;
+                    for (let i = 0; i < keys; i++) {
+                        const key = this.extractNumber();
+                        const reference = this.extractNumber();
+                        o[key] = reference
+                    }
+                    objmap.set(id, {
+                        type: "map",
+                        value: o
+                    });
                 } break;
                 case "8": {
                     const length = this.extractNumber();
                     const buf = Array.from(this.buffer.slice(0, length)).map(a => String.fromCharCode(a)).join("");
                     this.buffer = this.buffer.slice(length);
-                    objmap.set(id, parseFloat(buf));
+                    objmap.set(id, {type: "small", value: parseFloat(buf)});
                 } break;
                 case "9": { // null
-                    objmap.set(id, null);
+                    objmap.set(id, {type: "small", value: null});
                 } break;
                 default: {
                     throw new Error(`Unknown data type: ${type}`)
@@ -262,46 +304,45 @@ export class SkSerializer {
         const values = {} as any;
         const exp = function (objref: number): any {
             const v = objmap.get(objref);
-            if (v === null) return v;
-            switch (typeof v) {
-                case "string":
-                case "number":
-                case "bigint":
-                case "boolean":
-                case "symbol":
-                case "undefined":
-                    return v;
-                case "object": {
+            if (v === undefined) return v;
+            switch (v.type) {
+                case "small": {
+                    return v.value
+                }
+                case "map": {
                     if (objref in values) return values[objref];
-                    
-                    if (special.has(objref)) {
-                        const type = special.get(objref)!;
-                        if (type === 2) { // Array
-                            const v2 = v.map((a: number) => exp(a));
-                            values[objref] = v2;
-                            return v2;
-                        }
-                    }
+
                     const o = {} as any;
                     values[objref] = o;
-                    for (const k in v) {
+                    for (const k in v.value) {
                         const key = keymap.get(k)!;
                         if (key === undefined) throw new Error(`malformed sksr file`)
-                        const value = exp(v[k]);
+                        const value = exp(v.value[k]);
                         o[key] = value;
                     }
-                    if (special.has(objref)) {
-                        const type = special.get(objref)!;
-                        if (type === 1) { // Map
-                            return new Map(Object.entries(o));         
-                        } else {
-                            throw new Error(`unknown builtin type: ${type}`)
-                        }
+                    return new Map(Object.entries(o));         
+                }
+                case "array": {
+                    const v2 = v.value.map((a: number) => exp(a));
+                    values[objref] = v2;
+                    return v2;
+                }
+                case "null": return null;
+
+                case "object": {
+                    if (objref in values) return values[objref];
+
+                    const o = {} as any;
+                    values[objref] = o;
+                    for (const k in v.value) {
+                        const key = keymap.get(k)!;
+                        if (key === undefined) throw new Error(`malformed sksr file`)
+                        const value = exp(v.value[k]);
+                        o[key] = value;
                     }
 
                     return o;
                 }
-                case "function": throw new Error();
             }
         };
 
