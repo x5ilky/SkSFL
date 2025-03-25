@@ -63,13 +63,13 @@ export class SkSerializer {
             } 
             if (obj instanceof Array) {
                 this.special.set(c, 2);
-                const o = [];
+                const o: number[] = [];
                 for (const v of obj) {
                     const ok = v;
                     if (this.valuemap.has(ok)) 
-                        o.push(this.valuemap.get(ok))
+                        o.push(this.valuemap.get(ok)!)
                     else if (this.objmap.has(ok))
-                        o.push(this.objmap.get(ok))
+                        o.push(this.objmap.get(ok)!.key)
                     else
                         o.push(this.bindObj(ok, custom))
                 }
