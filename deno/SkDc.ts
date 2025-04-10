@@ -66,9 +66,9 @@ interface SilkDCConfig {
   cooldownIgnore: string[];
 }
 
-export class SilkDC<TCustomState> {
+export class SilkDC {
   client: Client;
-  commands: Map<string, SilkDCCommand<TCustomState>>;
+  commands: Map<string, SilkDCCommand>;
   customCommands: { [name: string]: (v: string) => void | Promise<void> };
   cooldown: { [name: string]: { [id: string]: number } };
   logger: Logger;
@@ -76,7 +76,6 @@ export class SilkDC<TCustomState> {
   constructor(
     public config: SilkDCConfig,
     options: ClientOptions,
-    public customState: TCustomState,
     logger: Logger
   ) {
     this.logger = logger;
@@ -170,7 +169,7 @@ export class SilkDC<TCustomState> {
         const fp = path.join(p, fstr.name);
         const st = await Deno.stat(fp);
         if (!st.isDirectory) {
-          const f: SilkDCCommand<TCustomState> = (await import('./' + fp)).default;
+          const f: SilkDCCommand = (await import('./' + fp)).default;
           this.logger.info(
             `Loaded command: ${fstr.name} |  Desc: ${f.description} | Path: ${'./' + path.join(p, fstr.name)}`
           );
@@ -284,10 +283,10 @@ Custom commands:`);
   }
 }
 
-export interface SilkDCCommand<T> {
+export interface SilkDCCommand {
   execute: (
     interaction: ChatInputCommandInteraction,
-    instance: SilkDC<T>
+    instance: SilkDC
   ) => Promise<void>;
   description: string;
   options?: SlashCommandBuilder;
@@ -296,8 +295,8 @@ export interface SilkDCCommand<T> {
 }
 
 export const SubcommandHelper: <T>(cmds: {
-  [id: string]: SilkDCCommand<T>;
-}) => SilkDCCommand<T>['execute'] = (cmds) => {
+  [id: string]: SilkDCCommand;
+}) => SilkDCCommand['execute'] = (cmds) => {
   return async (interaction, instance) => {
     const sub = interaction.options.getSubcommand();
     await cmds[sub].execute(interaction, instance);
