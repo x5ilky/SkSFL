@@ -42,7 +42,6 @@ import rd from 'node:readline';
 import process from "node:process";
 
 // #begin_import
-import { SkOption } from "../shared/SkOp.ts";
 import { Logger, LogLevel } from "../shared/SkLg.ts";
 // #end_import
 
@@ -63,7 +62,7 @@ const question = (prompt: string): Promise<string> => {
 interface SilkDCConfig {
   token: string;
   commandsDir: string;
-  http_proxy: SkOption<string>;
+  http_proxy: string | null;
   cooldownIgnore: string[];
 }
 
@@ -87,17 +86,17 @@ export class SilkDC<TCustomState> {
       priority: -10
     })
     this.cooldown = {};
-    this.config.http_proxy.run_if_some((pr) => {
+    if (this.config.http_proxy) {
       proxy.default.setConfig({
-        http: pr,
+        http: this.config.http_proxy,
         https: '',
       });
 
       proxy.default.start();
       options.rest ||= {};
       // deno-lint-ignore no-explicit-any
-      options.rest.agent = new ProxyAgent(pr) as any;
-    });
+      options.rest.agent = new ProxyAgent(this.config.http_proxy) as any;
+    };
     this.client = new Client(options);
     this.client.on('ready', (cl) => {
       this.logger.info(`Ready, logged in as ${cl.user.username}`);
@@ -192,8 +191,8 @@ export class SilkDC<TCustomState> {
       const v = this.commands.get(key)!;
       const opt = v.options;
       this.logger.debug(`${key} ${JSON.stringify(v.description)}`);
-      if (opt.is_some()) {
-        const op = opt.unwrap().setName(key).setDescription(v.description);
+      if (opt) {
+        const op = opt.setName(key).setDescription(v.description);
         commands.push(op.toJSON());
       } else {
         const op = new SlashCommandBuilder()
@@ -214,10 +213,10 @@ export class SilkDC<TCustomState> {
         `Refreshing ${commands.length} application (/) commands.`
       );
 
-      this.config.http_proxy.run_if_some((v) => {
+      if (this.config.http_proxy) {
         // deno-lint-ignore no-explicit-any
-        rest.setAgent(new ProxyAgent(v) as any);
-      });
+        rest.setAgent(new ProxyAgent(this.config.http_proxy) as any);
+      };
       const _data = await rest.put(
         Routes.applicationCommands(this.client.user!.id),
         { body: commands }
@@ -291,8 +290,7 @@ export interface SilkDCCommand<T> {
     instance: SilkDC<T>
   ) => Promise<void>;
   description: string;
-  options: SkOption<SlashCommandBuilder>;
-  subOptions: SkOption<SlashCommandSubcommandBuilder>;
+  options?: SlashCommandBuilder;
   cooldown?: number;
   autocomplete?: (Interaction: AutocompleteInteraction) => Promise<void>;
 }
