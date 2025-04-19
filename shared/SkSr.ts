@@ -8,6 +8,7 @@ export class SkSerializer {
     special: Map<number, number>;
     buffer: Uint8Array;
     counter: number;
+    position: number;
 
     constructor() {
         this.objmap = new Map();
@@ -16,6 +17,7 @@ export class SkSerializer {
         this.special = new Map();
         this.buffer = null as unknown as Uint8Array;
         this.counter = 0;
+        this.position = 0;
     }
 
     private bind(obj: any) {
@@ -102,43 +104,47 @@ export class SkSerializer {
             throw new Error(`Cannot serialize functions`);
         throw new Error(`Cannot serialize`);
     }
+    private strToArr(s: string): number[] {
+        const te = new TextEncoder();
+        return Array.from(te.encode(s));
+    }
     serialize(obj: any, custom?: (v: any) => any) {
         this.keymap.clear();
         this.objmap.clear();
         this.valuemap.clear();
-        let out = "SkSr";
+        let out = this.strToArr("SkSr");
         const o = this.bindObj(obj, custom ?? ((v) => v));
-        out += `${this.numToChar(o)}${this.numToChar(this.objmap.size)}`
+        out = [...out, ...this.numToChar(o), ...this.numToChar(this.objmap.size)];
         for (const [m, i] of this.objmap) {
-            out += this.numToChar(i.key);
+            out = [...out, ...this.numToChar(i.key)];
             switch (i.type) {
                 case "small": {
                     switch (typeof m) {
-                        case "string": out += `1`; break;
+                        case "string": out = [...out, `1`.charCodeAt(0)]; break;
                         case "number": {
                             if (Number.isInteger(m)) {
-                                out += `2`;
+                                out = [...out, `2`.charCodeAt(0)];
                             } else {
-                                out += `8`;
+                                out = [...out, `8`.charCodeAt(0)];
                             }
                         } break;
-                        case "bigint": out += `3`; break;
-                        case "boolean": out += `4`; break;
-                        case "symbol": out += `5`; break;
-                        case "undefined": out += `6`; break;
+                        case "bigint": out = [...out, `3`.charCodeAt(0)]; break;
+                        case "boolean": out = [...out, `4`.charCodeAt(0)]; break;
+                        case "symbol": out = [...out, `5`.charCodeAt(0)]; break;
+                        case "undefined": out = [...out, `6`.charCodeAt(0)]; break;
                     }
                 } break;
                 case "object":
-                    out += `7`; 
+                    out = [...out, `7`.charCodeAt(0)]; 
                 break;
                 case "map":
-                    out += `m`;
+                    out = [...out, `m`.charCodeAt(0)];
                 break;
                 case "array":
-                    out += `a`;
+                    out = [...out, `a`.charCodeAt(0)];
                 break;
                 case "null":
-                    out += `9`;
+                    out = [...out, `9`.charCodeAt(0)];
                 break;
             }
             switch (i.type) {
@@ -147,17 +153,18 @@ export class SkSerializer {
                         case "symbol":
                         case "bigint":
                         case "string": {
-                            out += `${this.numToChar(m.toString().length)}${m.toString()}`;
+                            out = [...out, ...this.numToChar(this.strToArr(m.toString()).length), ...this.strToArr(m.toString())];
+                            console.log(m.toString().length, (this.numToChar(m.toString().length)))
                         } break;
                         case "number": {
                             if (Number.isInteger(m)) {
-                                out += `${this.numToChar(m)}`;
+                                out = [...out, ...this.numToChar(m)];
                             } else {
-                                out += `${this.numToChar(m.toString().length)}${m.toString()}`
+                                out = [...out, ...this.numToChar(this.strToArr(m.toString()).length), ...this.strToArr(m.toString())];;
                             }
                         } break;
                         case "boolean": {
-                            out += this.numToChar(+m);
+                            out = [...out, ...this.numToChar(+m)];
                         } break;
                         case "undefined":
                         case "function":
@@ -165,57 +172,65 @@ export class SkSerializer {
                     }
                 } break;
                 case "array": {
-                    out += this.numToChar(m.length);
+                    out = [...out, ...this.numToChar(m.length)]
                     for (const v of m) {
-                        out += this.numToChar(v);
+                        out = [...out, ...this.numToChar(v)];
                     }
                 } break;
                 case "map": {
                     const keys = Object.keys(m);
-                    out += this.numToChar(keys.length);
+                    out = [...out, ...this.numToChar(keys.length)]
                     for (const key of keys) {
-                        out += this.numToChar(parseInt(key)) + this.numToChar(m[key]);
+                        out = [...out, ...this.numToChar(parseInt(key)), ...this.numToChar(m[key])];
                     }
                 } break;
                 case "object": { 
                     if (m !== null) {
                         const keys = Object.keys(m);
-                        out += this.numToChar(keys.length);
+                        out = [...out, ...this.numToChar(keys.length)];
                         for (const key of keys) {
-                            out += this.numToChar(parseInt(key)) + this.numToChar(m[key]);
+                            out = [...out, ...this.numToChar(parseInt(key)), ...this.numToChar(m[key])];
                         }
                     }
                 } break;
             }
         }
-        out += `${this.numToChar(this.keymap.size)}`
+        out = [...out, ...this.numToChar(this.keymap.size)]
         for (const [m, i] of this.keymap) {
-            out += `${this.numToChar(i)}${this.numToChar(m.length)}${m}`;
+            out = [...out, ...this.numToChar(i), ...this.numToChar(this.strToArr(m).length), ...this.strToArr(m)];
         }
-        return out;
+        return Uint8Array.from(out);
     }
 
-    private numToChar(num: number): string {
-        return String.fromCharCode((num & 0xFFFF0000) >> 4) + String.fromCharCode(num & 0xFFFF);
+    private numToChar(num: number): number[] {
+        return [(num & 0xFF000000) >> 6, (num & 0x00FF0000) >> 4, (num & 0x0000FF00) >> 2, (num & 0x000000FF)];
     }
-    deserialize<T>(str: string, custom?: (v: any) => any): T {
+
+    bufferSlice(num: number): Uint8Array {
+        this.position += num;
+        return this.buffer.slice(num);
+    }
+    deserialize<T>(str: Uint8Array, custom?: (v: any) => any): T {
+        this.position = 0;
         const keymap = new Map<string, string>();
         const objmap = new Map<number, { type: SkValueType, value: any }>();
         
         const MAGIC_NUMBER = "SkSr";
-        if (str.slice(0, 4) !== MAGIC_NUMBER) throw new Error(`Invalid SkSr string, invalid magic number`);
-        this.buffer = Uint8Array.from(str.split("").map(a => a.charCodeAt(0))).slice(4);
+        if (Array.from(str.slice(0, 4)).map(a => String.fromCharCode(a)).join("") !== MAGIC_NUMBER) throw new Error(`Invalid SkSr string, invalid magic number, position: ${this.position}`);
+        this.buffer = str.slice(4);
+        this.position += 4;
         const initialId = this.extractNumber();
         const objmapCount = this.extractNumber();        
         for (let i = 0; i < objmapCount; i++) {
             const id = this.extractNumber();
             const type = String.fromCharCode(this.buffer[0]);
-            this.buffer = this.buffer.slice(1);
+            this.buffer = this.bufferSlice(1);
             switch (type) {
                 case "1": { // string
                     const length = this.extractNumber();
+                    console.log(length)
                     const buf = Array.from(this.buffer.slice(0, length)).map(a => String.fromCharCode(a)).join("");
-                    this.buffer = this.buffer.slice(length);
+                    this.buffer = this.bufferSlice(length);
                     objmap.set(id, {type: "small", value: buf});
                 } break;
                 case "2": { // integer
@@ -225,7 +240,7 @@ export class SkSerializer {
                 case "3": { // bigint
                     const length = this.extractNumber();
                     const buf = Array.from(this.buffer.slice(0, length)).map(a => String.fromCharCode(a)).join("");
-                    this.buffer = this.buffer.slice(length);
+                    this.buffer = this.bufferSlice(length);
                     objmap.set(id, {type: "small", value: BigInt(buf)});
                 } break;
                 case "4": { // boolean
@@ -235,7 +250,7 @@ export class SkSerializer {
                 case "5": { // symbol
                     const length = this.extractNumber();
                     const buf = Array.from(this.buffer.slice(0, length)).map(a => String.fromCharCode(a)).join("");
-                    this.buffer = this.buffer.slice(length);
+                    this.buffer = this.bufferSlice(length);
                     objmap.set(id, {type: "small", value: Symbol.for(buf)});
                 } break;
                 case "6": { // undefined
@@ -281,14 +296,14 @@ export class SkSerializer {
                 case "8": {
                     const length = this.extractNumber();
                     const buf = Array.from(this.buffer.slice(0, length)).map(a => String.fromCharCode(a)).join("");
-                    this.buffer = this.buffer.slice(length);
+                    this.buffer = this.bufferSlice(length);
                     objmap.set(id, {type: "small", value: parseFloat(buf)});
                 } break;
                 case "9": { // null
                     objmap.set(id, {type: "small", value: null});
                 } break;
                 default: {
-                    throw new Error(`Unknown data type: ${type}`)
+                    throw new Error(`Unknown data type: ${type}, position: 0x${this.position.toString(16)}`)
                 }
             }
         }
@@ -297,7 +312,7 @@ export class SkSerializer {
             const id = this.extractNumber();
             const length = this.extractNumber();
             const buf = Array.from(this.buffer.slice(0, length)).map(a => String.fromCharCode(a)).join("");
-            this.buffer = this.buffer.slice(length);
+            this.buffer = this.bufferSlice(length);
             keymap.set(id.toString(), buf);
         }
 
@@ -352,8 +367,9 @@ export class SkSerializer {
         return exp(initialId) as T;
     }
     private extractNumber(): number {
-        const v = (this.buffer[0] << 4) + this.buffer[1]
-        this.buffer = this.buffer.slice(2);
+        const v = (this.buffer[0] << 6) + (this.buffer[1] << 4) + (this.buffer[2] << 2) + (this.buffer[3]);
+        this.buffer = this.buffer.slice(4);
+        this.position += 4;
         return v;
     }
 }
