@@ -105,6 +105,10 @@
         "deno": "./shared/SkDb.ts",
         "node": "./shared/SkDb.ts",
         "dependencies": ["SkSr", "SkAgnostic", "SkLg"]
-    }
-    
+    },
+    "SkRe": {
+        "deno": "./shared/SkRe.ts",
+        "node": "./shared/SkRe.ts",
+        "dependencides": []
+    } 
 }
