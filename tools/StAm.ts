@@ -41,7 +41,8 @@ const shape = skap.command({
             outFile: skap.string("-o").description("output file path"),
             help: skap.boolean("--help").description("display this message"),
             minify: skap.boolean("-M").description("do a (very bad) minification of your files"),
-            minifyRemoveComments: skap.boolean("-Mc").description("minification and remove comments (might be broken)")
+            minifyRemoveComments: skap.boolean("-Mc").description("minification and remove comments (might be broken)"),
+            noSkdcNpmPrefix: skap.boolean("-Q").description("remove `npm:` prefixes from skdc discord imports")
         })
     }).required()
 })
@@ -90,6 +91,7 @@ async function main() {
         console.log(`[SkAm] Runtime: ${runtime}`);
         console.log(`[SkAm] Output File: ${output}`);
         if (subc.minify) console.log(`[SkAm] Minification: true`);
+        if (subc.noSkdcNpmPrefix) console.log(`[SkAm] No skdc npm prefix: true`);
 
         const START_COMMENT = 
 `/**
@@ -106,7 +108,10 @@ async function main() {
             if (module in modulesIndex) {
                 const file = modulesIndex[module as keyof typeof modulesIndex];
                 if (runtime in file) {
-                    out += "\n" + (await Deno.readTextFile(path.join(libraryPath, file[runtime]!))).replace(/\/\/\s+#begin_import.*\/\/\s+#end_import/gs, '') + "\n";
+                    if (module === "SkDc" && subc.noSkdcNpmPrefix)
+                        out += "\n" + (await Deno.readTextFile(path.join(libraryPath, file[runtime]!))).replace(/\/\/\s+#begin_import.*\/\/\s+#end_import/gs, '').replace(/npm:(?=@discordjs|discord)/g, "") + "\n";
+                    else
+                        out += "\n" + (await Deno.readTextFile(path.join(libraryPath, file[runtime]!))).replace(/\/\/\s+#begin_import.*\/\/\s+#end_import/gs, '') + "\n";
                 } else {
                     console.error(`[SkAm] Module ${module} not found for runtime ${runtime}`);
                 }
