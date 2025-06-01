@@ -154,7 +154,6 @@ export class SkSerializer {
                         case "bigint":
                         case "string": {
                             out = [...out, ...this.numToChar(this.strToArr(m.toString()).length), ...this.strToArr(m.toString())];
-                            console.log(m.toString().length, (this.numToChar(m.toString().length)))
                         } break;
                         case "number": {
                             if (Number.isInteger(m)) {
@@ -228,7 +227,6 @@ export class SkSerializer {
             switch (type) {
                 case "1": { // string
                     const length = this.extractNumber();
-                    console.log(length)
                     const buf = Array.from(this.buffer.slice(0, length)).map(a => String.fromCharCode(a)).join("");
                     this.buffer = this.bufferSlice(length);
                     objmap.set(id, {type: "small", value: buf});
