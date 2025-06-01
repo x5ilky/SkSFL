@@ -379,7 +379,6 @@ export type MenuBuilderButton<T = never> = {
 };
 
 export type MenuBuilderButtonCallback<T> = (
-  state: T[],
   i: ButtonInteraction,
   int: InteractionType,
   row: MenuBuilder<T>
@@ -414,14 +413,14 @@ export class MenuBuilder<T> {
     else this.currentCollector.stop();
   }
 
-  async getData(state: T[]): Promise<{
+  async getData(): Promise<{
     embed: EmbedBuilder;
     rows: ActionRowBuilder<ButtonBuilder>[];
     attachments: AttachmentBuilder[];
     buttonStates: { but: MenuBuilderButton<T>; id: string }[];
   }> {
     const rows: ActionRowBuilder<ButtonBuilder>[] = [];
-    const cbRes = await this.callback(...state);
+    const cbRes = await this.callback();
     this.buttonStates = [];
     cbRes.buttons.forEach((button, index) => {
       if (index % 5 === 0) {
@@ -454,11 +453,10 @@ export class MenuBuilder<T> {
 
   /**
    * Use this method to send the embed for the first time
-   * @param state state to be shared throughout operations
    * @returns Nothing
    */
-  async send(...state: T[]) {
-    const t = await this.getData(state);
+  async send() {
+    const t = await this.getData();
 
     const _msg = await this.interaction.reply({
       embeds: [t.embed],
@@ -497,10 +495,10 @@ export class MenuBuilder<T> {
             i.user.id === this.interaction.user.id &&
             this.allowedIds === undefined
           ) {
-            d.but.onClick(state, i, this.interaction, this);
+            d.but.onClick(i, this.interaction, this);
           } else if (this.allowedIds !== undefined) {
             if (this.allowedIds.includes(i.user.id)) {
-              d.but.onClick(state, i, this.interaction, this);
+              d.but.onClick(i, this.interaction, this);
             }
           } else {
             await i.reply({
@@ -530,10 +528,9 @@ export class MenuBuilder<T> {
   /**
    * Use this method when updating the embed.
    * Always use `i.deferUpdate()`
-   * @param state state to be shared throughout operation
    */
-  async edit(...state: T[]) {
-    const t = await this.getData(state);
+  async edit() {
+    const t = await this.getData();
     // console.log(`json: start\n${JSON.stringify(t[0].toJSON())}\nend`)
     // console.log(`components: start\n${JSON.stringify(t[1].toJSON())}\nend`)
 
@@ -560,10 +557,10 @@ export class MenuBuilder<T> {
             i.user.id === this.interaction.user.id &&
             this.allowedIds === undefined
           ) {
-            d.but.onClick(state, i, this.interaction, this);
+            d.but.onClick(i, this.interaction, this);
           } else if (this.allowedIds !== undefined) {
             if (this.allowedIds.includes(i.user.id)) {
-              d.but.onClick(state, i, this.interaction, this);
+              d.but.onClick(i, this.interaction, this);
             }
           } else {
             await i.reply({
