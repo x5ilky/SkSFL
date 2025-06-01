@@ -7,27 +7,34 @@
  *  - node-global-proxy (using proxy server)
  *  - undici            (")
  *  - discord.js
+ * 
+ * 
+ * Example Usage:
+ * ```ts
+ * 
+ * 
+ * 
+ * ```
  */
 import {
-  ActionRowBuilder,
   AttachmentBuilder,
   AutocompleteInteraction,
-  ButtonBuilder,
   ButtonInteraction,
   CacheType,
   ChatInputCommandInteraction,
   Client,
   ClientOptions,
-  EmbedBuilder,
   Events,
-  GuildTextBasedChannel,
   InteractionCollector,
   REST,
   Routes,
+  TextChannel,
 } from 'npm:discord.js';
 import {
   SlashCommandBuilder,
-  SlashCommandSubcommandBuilder,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
 } from "npm:@discordjs/builders";
 import {
   ButtonStyle,
@@ -169,7 +176,7 @@ export class SilkDC {
         const fp = path.join(p, fstr.name);
         const st = await Deno.stat(fp);
         if (!st.isDirectory) {
-          const f: SilkDCCommand = (await import('./' + fp)).default;
+          const f: SilkDCCommand = (await import('./' + fp + `?imported=${Date.now()}`)).default;
           this.logger.info(
             `Loaded command: ${fstr.name} |  Desc: ${f.description} | Path: ${'./' + path.join(p, fstr.name)}`
           );
@@ -306,7 +313,7 @@ export type ActionBarButton = {
   label: string;
   style: ButtonStyle;
   disabled: boolean;
-  onclick: (i: ButtonInteraction, row: ActionRowBuilder) => void;
+  onclick: (i: ButtonInteraction, row: ActionRowBuilder<ButtonBuilder>) => void;
 };
 
 /**
@@ -324,7 +331,7 @@ export function createActionBar(
   allowedIds?: 'all' | string[]
 ): ActionRowBuilder<ButtonBuilder> {
   
-  const row = new ActionRowBuilder();
+  const row = new ActionRowBuilder<ButtonBuilder>();
   buttons.forEach((button) => {
     const id = `button-${Math.floor(Math.random() * 1_000_000_000_000_000)}`;
     const but = new ButtonBuilder()
@@ -336,7 +343,7 @@ export function createActionBar(
     const filter = (i: ButtonInteraction) => i.customId === id;
 
     if (interaction.channel?.type !== ChannelType.GuildText) return;
-    const collector = (interaction.channel as GuildTextBasedChannel)!.createMessageComponentCollector({
+    const collector = (interaction.channel as TextChannel)!.createMessageComponentCollector({
       // deno-lint-ignore no-explicit-any
       filter: filter as any,
       time: 5 * 60 * 1000,
@@ -413,7 +420,7 @@ export class MenuBuilder<T> {
     attachments: AttachmentBuilder[];
     buttonStates: { but: MenuBuilderButton<T>; id: string }[];
   }> {
-    const rows: ActionRowBuilder[] = [];
+    const rows: ActionRowBuilder<ButtonBuilder>[] = [];
     const cbRes = await this.callback(...state);
     this.buttonStates = [];
     cbRes.buttons.forEach((button, index) => {
@@ -429,7 +436,7 @@ export class MenuBuilder<T> {
         .setStyle(button.style)
         .setDisabled(button.disabled)
         .setCustomId(id);
-      if (button.emoji) but.setEmoji(button.emoji);
+      if (button.emoji) but.setEmoji(button.emoji as any);
       rows[p].addComponents(but);
       this.buttonStates.push({
         but: button,
@@ -463,8 +470,11 @@ export class MenuBuilder<T> {
       this.allowedIds.includes(i.user.id);
 
     try {
+      if (this.interaction.channel === null) {
+        throw new Error("Your intents do not allow you to see interaction channels");
+      }
       this.currentCollector =
-        (this.interaction.channel as GuildTextBasedChannel)!.createMessageComponentCollector({
+        (this.interaction.channel as TextChannel)!.createMessageComponentCollector({
           // deno-lint-ignore no-explicit-any
           filter: filter as any,
           time: 60 * 60 * 1000,
@@ -533,8 +543,11 @@ export class MenuBuilder<T> {
       this.allowedIds.includes(i.user.id);
 
     try {
+      if (this.interaction.channel === null) {
+        throw new Error("Your intents do not allow you to see interaction channels");
+      }
       this.currentCollector =
-        (this.interaction.channel as GuildTextBasedChannel)!.createMessageComponentCollector({
+        (this.interaction.channel as TextChannel)!.createMessageComponentCollector({
           // deno-lint-ignore no-explicit-any
           filter: filter as any,
           time: 60 * 60 * 1000,
@@ -578,7 +591,7 @@ export class MenuBuilder<T> {
    * Disable buttons
    */
   async disable() {
-    const rows: ActionRowBuilder[] = [];
+    const rows: ActionRowBuilder<ButtonBuilder>[] = [];
     const cbRes = await this.callback();
     cbRes.buttons.forEach((button, index) => {
       if (index % 5 === 0) rows.push(new ActionRowBuilder());

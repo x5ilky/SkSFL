@@ -9,6 +9,29 @@ import { TSLexer } from "../shared/SkTs/Tk.ts";
 import { reconstructMinimize } from "../shared/SkTs/Rc.ts"
 
 const logger = new Logger({});
+const HOME = Deno.env.get("HOME") ?? (Deno.env.get("HOMEDRIVE")! + Deno.env.get("HOMEPATH")!);
+if (HOME === undefined) {
+    logger.error(`Can't find a HOME env variable to make config files at.`)
+    logger.error(`Please rerun with a hardcoded HOME value`);
+    Deno.exit(1);
+}
+
+let libraryPath = "";
+try {
+    const config = JSON.parse(Deno.readTextFileSync(path.join(HOME, ".stam.json")));
+    libraryPath = config?.libraryPath;
+    if (libraryPath === "" || libraryPath === undefined) {
+        logger.error("Expected 'libraryPath' in config json file!");
+        Deno.exit(1);
+    }
+} catch (err) {
+    if (!(err instanceof Deno.errors.NotFound)) {
+        throw err;
+    }
+    logger.error(`File does not exist! A file with empty libraryPath has been automatically created at "${path.join(HOME, ".stam.json")}"`);
+    Deno.writeTextFileSync(path.join(HOME, ".stam.json"), `{ "libraryPath": "" }`);
+    Deno.exit(1);
+}
 
 const shape = skap.command({
     subc: skap.subcommand({
@@ -83,7 +106,7 @@ async function main() {
             if (module in modulesIndex) {
                 const file = modulesIndex[module as keyof typeof modulesIndex];
                 if (runtime in file) {
-                    out += "\n" + (await Deno.readTextFile(path.join(import.meta.dirname!, "../", file[runtime]!))).replace(/\/\/\s+#begin_import.*\/\/\s+#end_import/gs, '') + "\n";
+                    out += "\n" + (await Deno.readTextFile(path.join(libraryPath, file[runtime]!))).replace(/\/\/\s+#begin_import.*\/\/\s+#end_import/gs, '') + "\n";
                 } else {
                     console.error(`[SkAm] Module ${module} not found for runtime ${runtime}`);
                 }

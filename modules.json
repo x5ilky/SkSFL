@@ -109,6 +109,6 @@
     "SkRe": {
         "deno": "./shared/SkRe.ts",
         "node": "./shared/SkRe.ts",
-        "dependencides": []
+        "dependencies": []
     } 
 }
