@@ -122,7 +122,7 @@ export class SkSerializer {
                     switch (typeof m) {
                         case "string": out = [...out, `1`.charCodeAt(0)]; break;
                         case "number": {
-                            if (Number.isInteger(m)) {
+                            if (Number.isInteger(m) && m < 0xffffffff) {
                                 out = [...out, `2`.charCodeAt(0)];
                             } else {
                                 out = [...out, `8`.charCodeAt(0)];
@@ -156,7 +156,7 @@ export class SkSerializer {
                             out = [...out, ...this.numToChar(this.strToArr(m.toString()).length), ...this.strToArr(m.toString())];
                         } break;
                         case "number": {
-                            if (Number.isInteger(m)) {
+                            if (Number.isInteger(m) && m < 0xffffffff) {
                                 out = [...out, ...this.numToChar(m)];
                             } else {
                                 out = [...out, ...this.numToChar(this.strToArr(m.toString()).length), ...this.strToArr(m.toString())];;

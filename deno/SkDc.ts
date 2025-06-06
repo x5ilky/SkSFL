@@ -37,6 +37,7 @@ import {
   ButtonBuilder,
 } from "npm:@discordjs/builders";
 import {
+APIMessageComponentEmoji,
   ButtonStyle,
   ChannelType
 } from "npm:@discordjs/core"
@@ -371,11 +372,11 @@ export function createActionBar(
 }
 
 export type MenuBuilderButton<T = never> = {
-  label: string;
+  label?: string;
   style: ButtonStyle;
   disabled?: boolean;
   onClick: MenuBuilderButtonCallback<T>;
-  emoji?: string;
+  emoji?: APIMessageComponentEmoji;
 };
 
 export type MenuBuilderButtonCallback<T> = (
@@ -431,11 +432,11 @@ export class MenuBuilder<T> {
         Math.floor(Math.random() * 1_000_000_000_000_000) % Date.now()
       }`;
       const but = new ButtonBuilder()
-        .setLabel(button.label)
         .setStyle(button.style)
         .setDisabled(button.disabled)
         .setCustomId(id);
-      if (button.emoji) but.setEmoji(button.emoji as any);
+      if (button.label) but.setLabel(button.label)
+      if (button.emoji) but.setEmoji(button.emoji);
       rows[p].addComponents(but);
       this.buttonStates.push({
         but: button,
@@ -594,7 +595,6 @@ export class MenuBuilder<T> {
       if (index % 5 === 0) rows.push(new ActionRowBuilder());
       const row = rows[Math.floor(index / 5)];
       const but = new ButtonBuilder()
-        .setLabel(button.label)
         .setStyle(button.style)
         .setDisabled(true)
         .setCustomId(
@@ -602,6 +602,7 @@ export class MenuBuilder<T> {
             Math.floor(Math.random() * 1_000_000_000_000_000) % Date.now()
           }`
         );
+      if (button.label) but.setLabel(button.label)
       if (button.emoji) but.setEmoji(button.emoji);
       row.addComponents(but);
     });
